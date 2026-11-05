@@ -466,13 +466,87 @@
           </div>
         </div>
 
-        <!-- Crop Suitability Ranking -->
-        <div class="nature-card rounded-2xl p-5 space-y-3">
-          <h3 class="text-sm font-extrabold text-earth-950 flex items-center gap-2 border-b border-earth-100 pb-2.5">
-            <i class="fa-solid fa-wheat-awn text-amber-600"></i> Recommended Crops for Soil
-          </h3>
-          <div id="crop-rank-list" class="space-y-2 text-xs">
-            <div class="text-earth-500 italic text-center py-2">Analyzing soil suitability...</div>
+        <!-- Crop Sowing Benchmark & Soil Gap Analysis Hub -->
+        <div class="nature-card rounded-2xl p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-earth-100 pb-3">
+            <div>
+              <h3 class="text-sm font-extrabold text-earth-950 flex items-center gap-2">
+                <i class="fa-solid fa-seedling text-forest-700"></i> Crop Sowing Benchmark & Soil Gap Analysis
+              </h3>
+              <p class="text-[11px] text-earth-600">Select target crop to compare live soil metrics against ICAR/FAO agronomic targets</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <label for="crop-target-select" class="text-[11px] font-bold text-earth-700 whitespace-nowrap">Target Crop:</label>
+              <select id="crop-target-select" onchange="onPlannedCropChange()" class="bg-earth-50 border border-earth-300 text-earth-900 text-xs rounded-xl px-3 py-1.5 font-bold focus:ring-forest-500 focus:border-forest-500 cursor-pointer">
+                <option value="Wheat">🌾 Wheat (Cereal Grain)</option>
+                <option value="Chickpea (Pulses)">🌱 Chickpea / Pulses (Legume)</option>
+                <option value="Maize (Corn)">🌽 Maize / Corn (Feed/Grain)</option>
+                <option value="Cotton">☁️ Cotton (Commercial Fiber)</option>
+                <option value="Rice (Paddy)">🍚 Rice / Paddy (Semiaquatic)</option>
+                <option value="Tomato">🍅 Tomato (Horticulture)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Readiness & Category Banner -->
+          <div class="bg-forest-50/70 border border-forest-200/80 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span id="plan-crop-name" class="font-extrabold text-sm text-forest-950 flex items-center gap-1.5">
+                <i class="fa-solid fa-wheat-awn text-amber-600"></i> Wheat
+              </span>
+              <span id="plan-crop-desc" class="text-[11px] text-forest-800 block">Requires well-drained loamy soil, moderate hydration, and balanced N-P-K.</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold text-forest-700 uppercase">Soil Readiness:</span>
+              <span id="plan-readiness-badge" class="px-2.5 py-0.5 rounded-full text-xs font-black bg-forest-600 text-white shadow-sm">Analyzing...</span>
+            </div>
+          </div>
+
+          <!-- 6-Metric Optimal vs Live Comparison Grid -->
+          <div id="plan-metrics-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+            <!-- Dynamically populated via JS -->
+          </div>
+
+          <!-- Actionable Soil Amendment Checklist -->
+          <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 space-y-2">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-clipboard-check text-amber-700"></i> Field Remediation Action Plan (To Sow Selected Crop):
+            </span>
+            <ul id="plan-remediations-list" class="space-y-1.5 text-xs text-amber-950 font-medium">
+              <!-- Dynamically populated via JS -->
+            </ul>
+          </div>
+
+          <!-- Recommended Crops Ranking Summary -->
+          <div class="pt-2 border-t border-earth-100">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-earth-500 block mb-2">Automated Suitability Ranking:</span>
+            <div id="crop-rank-list" class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs"></div>
+          </div>
+        </div>
+
+        <!-- 24-Hour Telemetry CSV Export Card -->
+        <div class="nature-card rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-emerald-200 bg-emerald-50/40">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-forest-100 border border-forest-300 flex items-center justify-center text-forest-700 text-lg">
+              <i class="fa-solid fa-file-csv"></i>
+            </div>
+            <div>
+              <h4 class="text-xs font-bold text-earth-900">Historical Telemetry Export (CSV)</h4>
+              <p class="text-[11px] text-earth-600">Download timestamped 7-in-1 Modbus soil chemistry, ExG foliage indices, and TinyML logs</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <select id="export-timeframe" class="bg-white border border-earth-300 text-earth-800 text-xs rounded-xl px-2.5 py-1.5 font-semibold">
+              <option value="1">Last 1 Hour</option>
+              <option value="2">Last 2 Hours</option>
+              <option value="6">Last 6 Hours</option>
+              <option value="12">Last 12 Hours</option>
+              <option value="24" selected>Last 24 Hours</option>
+              <option value="all">Full History (All Rows)</option>
+            </select>
+            <button onclick="downloadTelemetryCSV()" class="px-3.5 py-1.5 bg-forest-700 hover:bg-forest-800 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition">
+              <i class="fa-solid fa-download"></i> Export CSV
+            </button>
           </div>
         </div>
 
@@ -1031,9 +1105,91 @@
           term.scrollTop = term.scrollHeight;
         }
 
+        // Keep Crop Planning benchmarks in sync with live telemetry
+        updateCropPlanning();
+
       } catch (err) {
         console.error("Dashboard update error:", err);
       }
+    }
+
+    // Interactive Crop Planning Benchmark & Gap Analysis Handler
+    let currentPlannedCrop = "Wheat";
+    async function onPlannedCropChange() {
+      const sel = document.getElementById('crop-target-select');
+      if (sel) currentPlannedCrop = sel.value;
+      await updateCropPlanning();
+    }
+
+    async function updateCropPlanning() {
+      try {
+        const res = await fetch(`/api/crop_planning?crop=${encodeURIComponent(currentPlannedCrop)}`);
+        const data = await res.json();
+        if (!data || !data.params) return;
+
+        const nameEl = document.getElementById('plan-crop-name');
+        const descEl = document.getElementById('plan-crop-desc');
+        const badgeEl = document.getElementById('plan-readiness-badge');
+        const gridEl = document.getElementById('plan-metrics-grid');
+        const remList = document.getElementById('plan-remediations-list');
+
+        if (nameEl) nameEl.innerHTML = `<i class="fa-solid ${data.icon || 'fa-seedling'} text-amber-600"></i> ${data.crop} <span class="text-xs font-normal text-earth-600 font-mono">(${data.category})</span>`;
+        if (descEl) descEl.innerText = data.description;
+        if (badgeEl) {
+          badgeEl.innerText = `${data.readiness_pct}% Optimal (${data.optimal_count}/${data.total_params} In Range)`;
+          badgeEl.className = data.readiness_pct >= 80 
+            ? "px-2.5 py-0.5 rounded-full text-xs font-black bg-forest-600 text-white shadow-sm"
+            : (data.readiness_pct >= 50 
+               ? "px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-600 text-white shadow-sm"
+               : "px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-600 text-white shadow-sm");
+        }
+
+        if (gridEl) {
+          gridEl.innerHTML = '';
+          data.params.forEach(p => {
+            let badgeClass = "bg-forest-100 text-forest-800 border-forest-300";
+            let badgeText = "OPTIMAL";
+            let cardBorder = "border-earth-200 bg-white";
+            if (p.status === "DEFICIT") {
+              badgeClass = "bg-rose-100 text-rose-800 border-rose-300";
+              badgeText = `DEFICIT (${p.diff} ${p.unit})`;
+              cardBorder = "border-rose-200 bg-rose-50/40";
+            } else if (p.status === "SURPLUS") {
+              badgeClass = "bg-amber-100 text-amber-800 border-amber-300";
+              badgeText = `SURPLUS (+${p.diff} ${p.unit})`;
+              cardBorder = "border-amber-200 bg-amber-50/40";
+            }
+            gridEl.innerHTML += `
+              <div class="p-2.5 rounded-xl border ${cardBorder} shadow-xs flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="text-[10px] font-bold text-earth-600 uppercase tracking-tight">${p.name}</span>
+                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${badgeClass}">${badgeText}</span>
+                </div>
+                <div class="flex items-baseline justify-between mt-1">
+                  <span class="text-sm font-black text-earth-950 font-mono">${p.current} <span class="text-[10px] font-normal text-earth-500">${p.unit}</span></span>
+                  <span class="text-[10px] text-earth-500 font-mono font-medium">Target: ${p.min}-${p.max}</span>
+                </div>
+              </div>
+            `;
+          });
+        }
+
+        if (remList) {
+          remList.innerHTML = '';
+          data.remediations.forEach(r => {
+            remList.innerHTML += `<li class="flex items-start gap-1.5 leading-snug">• <span>${r}</span></li>`;
+          });
+        }
+
+      } catch (e) {
+        console.error("Crop planning update error:", e);
+      }
+    }
+
+    // Telemetry CSV Export Handler
+    function downloadTelemetryCSV() {
+      const tf = document.getElementById('export-timeframe').value;
+      window.location.href = `/api/export_csv?hours=${encodeURIComponent(tf)}`;
     }
 
     // Photo Upload Handler with Client-Side Instant Compression

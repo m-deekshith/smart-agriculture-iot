@@ -8,9 +8,14 @@ import sqlite3
 import cv2
 import numpy as np
 import requests
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, Response
 
-from ai_inference_engine import run_master_ai_analysis, evaluate_foliar_disease
+from ai_inference_engine import (
+    run_master_ai_analysis,
+    evaluate_foliar_disease,
+    CROP_BENCHMARKS,
+    analyze_crop_deficiencies
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -740,6 +745,71 @@ def receive_edge_telemetry():
         })
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+
+@app.route("/api/crop_planning", methods=["GET"])
+def api_crop_planning():
+    crop_name = request.args.get("crop", "Wheat")
+    # If hardware is disconnected, fallback to calibrated baseline soil
+    soil = state["soil"] if state["hardware_connected"] and state["soil"] else {
+        "moisture": 44.0, "temp": 28.0, "ec": 440.0, "ph": 6.7, "n": 50.0, "p": 40.0, "k": 53.0
+    }
+    analysis = analyze_crop_deficiencies(crop_name, soil)
+    analysis["available_crops"] = list(CROP_BENCHMARKS.keys())
+    analysis["hardware_connected"] = bool(state["hardware_connected"])
+    return jsonify(analysis)
+
+@app.route("/api/export_csv", methods=["GET"])
+def api_export_csv():
+    hours_param = request.args.get("hours", "24")
+    import io, csv
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            if hours_param == "all":
+                cursor.execute("""
+                    SELECT timestamp, moisture, temp, ec, ph, n, p, k, canopy_pct, exg, yellowing_pct, diagnosis, pump_action 
+                    FROM telemetry_logs ORDER BY id ASC
+                """)
+            else:
+                try:
+                    h = int(hours_param)
+                except ValueError:
+                    h = 24
+                cursor.execute(f"""
+                    SELECT timestamp, moisture, temp, ec, ph, n, p, k, canopy_pct, exg, yellowing_pct, diagnosis, pump_action 
+                    FROM telemetry_logs 
+                    WHERE timestamp >= datetime('now', '-{h} hours')
+                    ORDER BY id ASC
+                """)
+            rows = cursor.fetchall()
+            if not rows:
+                cursor.execute("""
+                    SELECT timestamp, moisture, temp, ec, ph, n, p, k, canopy_pct, exg, yellowing_pct, diagnosis, pump_action 
+                    FROM telemetry_logs ORDER BY id DESC LIMIT 200
+                """)
+                rows = list(reversed(cursor.fetchall()))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Timestamp_UTC", "Moisture_Pct", "Temperature_C", "EC_uS_cm", "Soil_pH",
+        "Nitrogen_mg_kg", "Phosphorus_mg_kg", "Potassium_mg_kg",
+        "Canopy_Cover_Pct", "Excess_Green_ExG", "Chlorosis_Pct",
+        "AI_Multimodal_Diagnosis", "Pump_Actuator_Action"
+    ])
+    for r in rows:
+        writer.writerow(r)
+
+    csv_data = output.getvalue()
+    timestamp_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"field_telemetry_{hours_param}h_{timestamp_str}.csv"
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 @app.route("/api/thingspeak", methods=["GET", "POST"])
 def manage_thingspeak():

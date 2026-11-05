@@ -187,6 +187,248 @@ CROP_PRIORITY = {
 }
 
 # In-memory smoothed crop scores to prevent 2-second jittering
+# -------------------------------------------------------------
+# 4. Standard Agronomic Crop Benchmarks (ICAR / FAO Standards)
+# -------------------------------------------------------------
+CROP_BENCHMARKS = {
+    "Wheat": {
+        "name": "Wheat",
+        "category": "Cereal Grain (Rabi)",
+        "icon": "fa-wheat-awn",
+        "min_m": 35.0, "max_m": 60.0, "target_m": 45.0,
+        "min_ph": 6.0, "max_ph": 7.5, "target_ph": 6.8,
+        "min_ec": 200, "max_ec": 800, "target_ec": 450,
+        "min_n": 35.0, "max_n": 75.0, "target_n": 55.0,
+        "min_p": 25.0, "max_p": 55.0, "target_p": 40.0,
+        "min_k": 30.0, "max_k": 65.0, "target_k": 50.0,
+        "min_temp": 15.0, "max_temp": 26.0,
+        "desc": "Requires well-drained loamy soil, moderate hydration, and balanced N-P-K."
+    },
+    "Chickpea (Pulses)": {
+        "name": "Chickpea (Pulses)",
+        "category": "Legume / Pulse (Rabi)",
+        "icon": "fa-seedling",
+        "min_m": 25.0, "max_m": 45.0, "target_m": 35.0,
+        "min_ph": 6.2, "max_ph": 8.0, "target_ph": 7.0,
+        "min_ec": 150, "max_ec": 600, "target_ec": 350,
+        "min_n": 10.0, "max_n": 40.0, "target_n": 25.0,
+        "min_p": 35.0, "max_p": 65.0, "target_p": 50.0,
+        "min_k": 45.0, "max_k": 85.0, "target_k": 65.0,
+        "min_temp": 18.0, "max_temp": 28.0,
+        "desc": "Drought-hardy legume with biological Rhizobium nitrogen fixation. Highly sensitive to waterlogging."
+    },
+    "Maize (Corn)": {
+        "name": "Maize (Corn)",
+        "category": "Cereal Grain / Feed (Kharif/Rabi)",
+        "icon": "fa-plant-wilt",
+        "min_m": 40.0, "max_m": 65.0, "target_m": 52.0,
+        "min_ph": 5.8, "max_ph": 7.2, "target_ph": 6.5,
+        "min_ec": 250, "max_ec": 900, "target_ec": 500,
+        "min_n": 50.0, "max_n": 85.0, "target_n": 70.0,
+        "min_p": 30.0, "max_p": 60.0, "target_p": 45.0,
+        "min_k": 35.0, "max_k": 70.0, "target_k": 55.0,
+        "min_temp": 20.0, "max_temp": 32.0,
+        "desc": "High nitrogen demand (heavy feeder). Requires warm soil and steady moisture during silking."
+    },
+    "Cotton": {
+        "name": "Cotton",
+        "category": "Commercial Fiber (Kharif)",
+        "icon": "fa-vest-patches",
+        "min_m": 35.0, "max_m": 55.0, "target_m": 45.0,
+        "min_ph": 6.5, "max_ph": 8.2, "target_ph": 7.2,
+        "min_ec": 300, "max_ec": 1200, "target_ec": 650,
+        "min_n": 60.0, "max_n": 100.0, "target_n": 80.0,
+        "min_p": 25.0, "max_p": 50.0, "target_p": 38.0,
+        "min_k": 55.0, "max_k": 95.0, "target_k": 75.0,
+        "min_temp": 22.0, "max_temp": 34.0,
+        "desc": "Deep taproot system; tolerates mild salinity; requires high potassium for boll development."
+    },
+    "Rice (Paddy)": {
+        "name": "Rice (Paddy)",
+        "category": "Semiaquatic Cereal (Kharif)",
+        "icon": "fa-water",
+        "min_m": 65.0, "max_m": 95.0, "target_m": 80.0,
+        "min_ph": 5.5, "max_ph": 7.0, "target_ph": 6.2,
+        "min_ec": 200, "max_ec": 800, "target_ec": 450,
+        "min_n": 55.0, "max_n": 95.0, "target_n": 75.0,
+        "min_p": 30.0, "max_p": 60.0, "target_p": 45.0,
+        "min_k": 40.0, "max_k": 70.0, "target_k": 55.0,
+        "min_temp": 22.0, "max_temp": 34.0,
+        "desc": "Hydrophilic crop requiring saturated to flooded root zones. Intolerant to dry soil."
+    },
+    "Tomato": {
+        "name": "Tomato",
+        "category": "Horticultural Solanaceae",
+        "icon": "fa-apple-whole",
+        "min_m": 45.0, "max_m": 65.0, "target_m": 55.0,
+        "min_ph": 6.0, "max_ph": 6.8, "target_ph": 6.4,
+        "min_ec": 350, "max_ec": 1000, "target_ec": 600,
+        "min_n": 45.0, "max_n": 80.0, "target_n": 65.0,
+        "min_p": 45.0, "max_p": 75.0, "target_p": 60.0,
+        "min_k": 60.0, "max_k": 100.0, "target_k": 85.0,
+        "min_temp": 18.0, "max_temp": 28.0,
+        "desc": "Requires nutrient-rich soil with high potassium for fruit firmness, and regulated hydration."
+    }
+}
+
+def analyze_crop_deficiencies(crop_name, soil):
+    """
+    Performs precise agronomic gap analysis between live soil readings
+    and the optimal benchmark for any of the 6 crops.
+    Returns status, deficiency/surplus delta, and actionable farm remediations.
+    """
+    if crop_name not in CROP_BENCHMARKS:
+        crop_name = "Wheat"
+    b = CROP_BENCHMARKS[crop_name]
+
+    m_val  = float(soil.get("moisture", 0.0))
+    t_val  = float(soil.get("temp", 25.0))
+    ec_val = float(soil.get("ec", 300.0))
+    ph_val = float(soil.get("ph", 6.5))
+    n_val  = float(soil.get("n", 40.0))
+    p_val  = float(soil.get("p", 30.0))
+    k_val  = float(soil.get("k", 40.0))
+
+    params = []
+    remediations = []
+
+    # 1. Soil Moisture
+    m_stat = "OPTIMAL"
+    m_diff = 0.0
+    if m_val < b["min_m"]:
+        m_stat = "DEFICIT"
+        m_diff = round(m_val - b["min_m"], 1)
+        mins = int(abs(m_diff) * 2.5)
+        remediations.append(f"💧 Moisture Deficit ({m_diff}%): Soil is too dry for {crop_name}. Irrigate for ~{max(mins, 15)} mins to raise moisture to optimal {b['min_m']}%.")
+    elif m_val > b["max_m"]:
+        m_stat = "SURPLUS"
+        m_diff = round(m_val - b["max_m"], 1)
+        remediations.append(f"⚠️ Moisture Excess (+{m_diff}%): Soil exceeds {b['max_m']}% moisture. Withhold irrigation and clear drainage furrows to prevent root hypoxia.")
+    params.append({
+        "name": "Soil Moisture", "unit": "%", "key": "moisture",
+        "current": m_val, "min": b["min_m"], "max": b["max_m"], "target": b["target_m"],
+        "status": m_stat, "diff": m_diff
+    })
+
+    # 2. Nitrogen (N)
+    n_stat = "OPTIMAL"
+    n_diff = 0.0
+    if n_val < b["min_n"]:
+        n_stat = "DEFICIT"
+        n_diff = round(n_val - b["min_n"], 1)
+        urea_kg = round((abs(n_diff) * 2.24) / 0.46, 1)
+        remediations.append(f"🌱 Nitrogen Deficit ({n_diff} mg/kg): Apply Urea (46% N) @ {urea_kg} kg/ha before sowing to satisfy {crop_name}'s vegetative nitrogen requirement.")
+    elif n_val > b["max_n"]:
+        n_stat = "SURPLUS"
+        n_diff = round(n_val - b["max_n"], 1)
+        remediations.append(f"⚠️ Nitrogen Surplus (+{n_diff} mg/kg): Soil N is abundant. Avoid basal nitrogen fertilizers to prevent vegetative lodging.")
+    params.append({
+        "name": "Nitrogen (N)", "unit": "mg/kg", "key": "n",
+        "current": n_val, "min": b["min_n"], "max": b["max_n"], "target": b["target_n"],
+        "status": n_stat, "diff": n_diff
+    })
+
+    # 3. Phosphorus (P)
+    p_stat = "OPTIMAL"
+    p_diff = 0.0
+    if p_val < b["min_p"]:
+        p_stat = "DEFICIT"
+        p_diff = round(p_val - b["min_p"], 1)
+        dap_kg = round((abs(p_diff) * 2.24) / 0.46, 1)
+        remediations.append(f"🌱 Phosphorus Deficit ({p_diff} mg/kg): Apply DAP (18% N, 46% P2O5) @ {dap_kg} kg/ha to stimulate root development.")
+    elif p_val > b["max_p"]:
+        p_stat = "SURPLUS"
+        p_diff = round(p_val - b["max_p"], 1)
+    params.append({
+        "name": "Phosphorus (P)", "unit": "mg/kg", "key": "p",
+        "current": p_val, "min": b["min_p"], "max": b["max_p"], "target": b["target_p"],
+        "status": p_stat, "diff": p_diff
+    })
+
+    # 4. Potassium (K)
+    k_stat = "OPTIMAL"
+    k_diff = 0.0
+    if k_val < b["min_k"]:
+        k_stat = "DEFICIT"
+        k_diff = round(k_val - b["min_k"], 1)
+        mop_kg = round((abs(k_diff) * 2.24) / 0.60, 1)
+        remediations.append(f"🌱 Potassium Deficit ({k_diff} mg/kg): Apply MOP (60% K2O) @ {mop_kg} kg/ha for cellular turgor and drought resilience.")
+    elif k_val > b["max_k"]:
+        k_stat = "SURPLUS"
+        k_diff = round(k_val - b["max_k"], 1)
+    params.append({
+        "name": "Potassium (K)", "unit": "mg/kg", "key": "k",
+        "current": k_val, "min": b["min_k"], "max": b["max_k"], "target": b["target_k"],
+        "status": k_stat, "diff": k_diff
+    })
+
+    # 5. Soil pH
+    ph_stat = "OPTIMAL"
+    ph_diff = 0.0
+    if ph_val < b["min_ph"]:
+        ph_stat = "DEFICIT"
+        ph_diff = round(ph_val - b["min_ph"], 2)
+        lime_kg = int(abs(ph_diff) * 300)
+        remediations.append(f"🧪 Soil Acidity (pH {ph_val:.2f} < min {b['min_ph']}): Apply Agricultural Lime (CaCO3) @ {lime_kg} kg/ha to raise pH for {crop_name}.")
+    elif ph_val > b["max_ph"]:
+        ph_stat = "SURPLUS"
+        ph_diff = round(ph_val - b["max_ph"], 2)
+        gyp_kg = int(abs(ph_diff) * 240)
+        remediations.append(f"🧪 Soil Alkalinity (pH {ph_val:.2f} > max {b['max_ph']}): Apply Agricultural Gypsum (CaSO4) @ {gyp_kg} kg/ha to lower pH.")
+    params.append({
+        "name": "Soil pH", "unit": "pH", "key": "ph",
+        "current": ph_val, "min": b["min_ph"], "max": b["max_ph"], "target": b["target_ph"],
+        "status": ph_stat, "diff": ph_diff
+    })
+
+    # 6. Salinity / EC
+    ec_stat = "OPTIMAL"
+    ec_diff = 0.0
+    if ec_val > b["max_ec"]:
+        ec_stat = "SURPLUS"
+        ec_diff = round(ec_val - b["max_ec"], 0)
+        remediations.append(f"⚡ High Salinity (EC {ec_val:.0f} µS/cm > max {b['max_ec']}): Leach soil root-zone with fresh non-saline irrigation water before planting.")
+    params.append({
+        "name": "Salinity (EC)", "unit": "µS/cm", "key": "ec",
+        "current": ec_val, "min": b["min_ec"], "max": b["max_ec"], "target": b["target_ec"],
+        "status": ec_stat, "diff": ec_diff
+    })
+
+    # 7. Soil Temperature
+    t_stat = "OPTIMAL"
+    t_diff = 0.0
+    if t_val < b["min_temp"]:
+        t_stat = "DEFICIT"
+        t_diff = round(t_val - b["min_temp"], 1)
+        remediations.append(f"🌡️ Low Soil Temp ({t_val:.1f}°C < min {b['min_temp']}°C): Pre-warm soil with clear plastic mulch before sowing {crop_name}.")
+    elif t_val > b["max_temp"]:
+        t_stat = "SURPLUS"
+        t_diff = round(t_val - b["max_temp"], 1)
+        remediations.append(f"🌡️ High Soil Temp ({t_val:.1f}°C > max {b['max_temp']}°C): Apply organic straw mulch to insulate and cool the seedbed.")
+    params.append({
+        "name": "Soil Temp", "unit": "°C", "key": "temp",
+        "current": t_val, "min": b["min_temp"], "max": b["max_temp"], "target": round((b["min_temp"]+b["max_temp"])/2.0, 1),
+        "status": t_stat, "diff": t_diff
+    })
+
+    if not remediations:
+        remediations.append(f"✅ Field soil conditions are 100% within the optimal agronomic envelope for {crop_name}! Soil is ready for planting.")
+
+    optimal_count = sum(1 for p in params if p["status"] == "OPTIMAL")
+    readiness_pct = round((optimal_count / len(params)) * 100.0, 1)
+
+    return {
+        "crop": crop_name,
+        "category": b["category"],
+        "icon": b["icon"],
+        "description": b["desc"],
+        "readiness_pct": readiness_pct,
+        "optimal_count": optimal_count,
+        "total_params": len(params),
+        "params": params,
+        "remediations": remediations
+    }
+
 _smoothed_crop_scores = {}
 
 def rank_crop_suitability(n, p, k, ph, moisture):
@@ -318,21 +560,33 @@ def run_master_ai_analysis(soil_dict, crop_dict, weather_dict):
 
     health_diag = predict_multimodal_health(soil_vec, crop_vec)
 
-    # Refine diagnosis if specific optical patterns (Aphids or Black Spot) are detected
-    if dark_spot >= 15.0 and yellow < 15.0:
+    # Optical syndrome refinement
+    if exg >= 0.20:
+        health_diag["title"] = "Healthy Foliage (Optimal Vegetative Vigor)"
+        health_diag["badge"] = "HEALTHY CANOPY"
+        health_diag["description"] = f"Optical canopy scanner detected strong photosynthetic chlorophyll vigor (ExG: {exg:.3f}) and healthy vegetative density. Cellular hydration and foliar health are optimal."
+        health_diag["action"] = "Routine Maintenance: Scheduled irrigation and standard crop scouting."
+        health_diag["confidence_pct"] = 98.2
+    elif yellow >= 25.0 and dark_spot < 15.0 and exg >= 0.05:
+        health_diag["title"] = "Canopy Maturation / Golden Ripening Stage"
+        health_diag["badge"] = "MATURING CANOPY"
+        health_diag["description"] = f"Optical scanner detected golden/yellowing grain heads ({yellow:.1f}%) with physiological desiccation (ExG: {exg:.3f}). Characteristic of natural cereal crop maturation and grain ripening."
+        health_diag["action"] = "Withhold excessive nitrogen; allow canopy to naturally desiccate for harvest."
+        health_diag["confidence_pct"] = 94.5
+    elif dark_spot >= 15.0 and yellow >= 15.0:
         health_diag["class_id"] = 3
-        health_diag["badge"] = "INSECT PEST / APHIDS"
+        health_diag["badge"] = "FOLIAR BLIGHT / LESIONS"
+        health_diag["title"] = "Foliar Blight & Necrotic Leaf Spot"
+        health_diag["description"] = f"Optical scanner detected necrotic lesions ({dark_spot:.1f}%) and chlorosis halos ({yellow:.1f}%). Active foliar tissue breakdown detected."
+        health_diag["action"] = "Apply copper fungicide or 0.5% Zinc Sulfate + 1% Urea spray to halt necrosis."
+        health_diag["confidence_pct"] = 95.8
+    elif dark_spot >= 15.0 and yellow < 15.0:
+        health_diag["class_id"] = 3
+        health_diag["badge"] = "INSECT PEST DETECTED"
         health_diag["title"] = "Aphid / Entomological Pest Infestation"
         health_diag["description"] = f"Optical scanner detected dark insect clusters ({dark_spot:.1f}%) on plant tissue with active chlorophyll (ExG: {exg:.3f}). Active aphid / scale pest colonization detected."
         health_diag["action"] = "Apply targeted bio-insecticide (Neem Oil 5ml/L or Imidacloprid) immediately."
         health_diag["confidence_pct"] = 96.2
-    elif dark_spot >= 15.0 and yellow >= 15.0:
-        health_diag["class_id"] = 3
-        health_diag["badge"] = "FOLIAR BLIGHT / BLACK SPOT"
-        health_diag["title"] = "Cercospora / Black Spot Leaf Blight"
-        health_diag["description"] = f"Optical scanner detected severe foliar blight: chlorosis halos ({yellow:.1f}%) and necrotic lesions ({dark_spot:.1f}%). Fungal pathogen activity confirmed."
-        health_diag["action"] = "Apply copper fungicide or 0.5% Zinc Sulfate + 1% Urea spray to halt necrosis."
-        health_diag["confidence_pct"] = 95.8
 
     crop_ranks  = rank_crop_suitability(soil_dict["n"], soil_dict["p"], soil_dict["k"], soil_dict["ph"], soil_dict["moisture"])
     fert_advice = get_fertilizer_and_timing_advisory(
@@ -359,6 +613,7 @@ def run_master_ai_analysis(soil_dict, crop_dict, weather_dict):
     return {
         "health_diagnosis": health_diag,
         "crop_rankings": crop_ranks[:3], # Top 3
+        "all_crop_rankings": crop_ranks,  # All 6
         "fertilizer_advisory": fert_advice,
         "irrigation_decision": {
             "action": irrigation_action,
