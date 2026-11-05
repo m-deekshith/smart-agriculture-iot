@@ -8,7 +8,7 @@ import sqlite3
 import cv2
 import numpy as np
 import requests
-from flask import Flask, render_template, jsonify, request, send_from_directory, Response
+from flask import Flask, render_template, jsonify, request, send_from_directory, Response, send_file
 
 from ai_inference_engine import (
     run_master_ai_analysis,
@@ -519,12 +519,22 @@ def report():
   <div class="prose">
     <div class="mb-6 flex justify-between items-center text-xs text-gray-400 border-b border-gray-800 pb-4">
       <a href="/" class="text-emerald-400 hover:underline">← Back to Live Dashboard</a>
-      <button onclick="window.print()" class="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-white rounded font-mono">Print to PDF 🖨️</button>
+      <div class="flex items-center gap-3">
+        <a href="/report.pdf" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-mono font-bold transition flex items-center gap-1.5">📥 Download PDF Report</a>
+        <button onclick="window.print()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-white rounded font-mono">Print 🖨️</button>
+      </div>
     </div>
     {html_content}
   </div>
 </body>
 </html>"""
+
+@app.route("/report.pdf")
+def serve_report_pdf():
+    pdf_path = os.path.join(BASE_DIR, "Smart_Agriculture_IoT_Research_Report.pdf")
+    if os.path.exists(pdf_path):
+        return send_file(pdf_path, mimetype='application/pdf', as_attachment=False)
+    return "PDF not found", 404
 
 @app.route("/<filename>.png")
 def serve_png(filename):
