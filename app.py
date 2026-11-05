@@ -533,6 +533,13 @@ def serve_png(filename):
         return send_from_directory(BASE_DIR, file_path)
     return "Not found", 404
 
+@app.route("/<filename>.jpg")
+def serve_jpg(filename):
+    file_path = f"{filename}.jpg"
+    if os.path.exists(os.path.join(BASE_DIR, file_path)):
+        return send_from_directory(BASE_DIR, file_path)
+    return "Not found", 404
+
 
 
 @app.route("/api/version")
