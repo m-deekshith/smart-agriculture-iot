@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VerdantFarm™ | Smart Field & Soil Intelligence</title>
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            earth: {
+              50: '#f8faf7',
+              100: '#f1f5ee',
+              200: '#e3ebd9',
+              300: '#ccd9be',
+              400: '#adc19a',
+              500: '#8ba673',
+              600: '#6d8a54',
+              700: '#536d40',
+              800: '#435735',
+              900: '#38482d',
+              950: '#1b2515',
+            },
+            forest: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #f5f7f3;
+      color: #1c2718;
+    }
+    .nature-card {
+      background-color: #ffffff;
+      border: 1px solid #e5ebd9;
+      box-shadow: 0 4px 20px -2px rgba(44, 62, 34, 0.05);
+    }
+    .nature-subcard {
+      background-color: #fbfdf9;
+      border: 1px solid #ecf2e4;
+    }
+    .pulse-live {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+      animation: pulseLive 2s infinite;
+    }
+    @keyframes pulseLive {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen antialiased flex flex-col justify-between">
+
+  <!-- TOP NATURE-INSPIRED FARM HEADER -->
+  <header class="bg-white/95 backdrop-blur border-b border-earth-200 sticky top-0 z-40 px-4 md:px-8 py-3.5 shadow-sm">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+      
+      <!-- Farm Branding -->
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-forest-600 to-forest-800 flex items-center justify-center text-white text-xl shadow-md shadow-forest-700/20">
+          <i class="fa-solid fa-seedling"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xl font-extrabold tracking-tight text-earth-950">VerdantFarm™</span>
+            <span class="text-[11px] font-bold bg-forest-100 text-forest-800 border border-forest-200 px-2 py-0.5 rounded-full">LIVE FIELD HUB</span>
+          </div>
+          <p class="text-xs text-earth-600 flex items-center gap-1.5 mt-0.5 font-medium">
+            <i class="fa-solid fa-location-dot text-forest-600 text-[11px]"></i>
+            <span id="field-station">Dharwad Field Station, Block A-12</span>
+            <span>•</span>
+            <span class="text-earth-500">Kharif Crop Rotation</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Action Status Pills -->
+      <div class="flex items-center gap-3">
+        <!-- Weather pill -->
+        <div class="flex items-center gap-2.5 bg-earth-50 px-3.5 py-1.5 rounded-xl border border-earth-200 text-xs">
+          <i class="fa-solid fa-cloud-sun text-amber-500 text-base"></i>
+          <div>
+            <span id="top-weather-temp" class="font-bold text-earth-900">29.6°C</span>
+            <span class="text-earth-600 text-[11px] ml-1">Rain: <span id="top-weather-rain" class="font-bold text-sky-600">0%</span></span>
+          </div>
+        </div>
+
+        <!-- Sensor Connection Badge -->
+        <div id="node-badge" class="flex items-center gap-2 bg-earth-50 px-3.5 py-1.5 rounded-xl border border-earth-200 text-xs font-semibold transition">
+          <span id="node-dot" class="w-2.5 h-2.5 rounded-full bg-forest-600 pulse-live"></span>
+          <span id="node-status" class="text-forest-700 font-bold">Field Sensor Active</span>
+        </div>
+
+        <!-- ThingSpeak Cloud Button -->
+        <button onclick="openThingSpeakModal()" class="flex items-center gap-2 bg-sky-50 hover:bg-sky-100 text-sky-800 px-3.5 py-1.5 rounded-xl border border-sky-200 text-xs font-bold transition shadow-sm">
+          <i class="fa-solid fa-cloud text-sky-600"></i>
+          <span id="ts-badge-text">ThingSpeak Cloud</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN BODY -->
+  <main class="max-w-7xl mx-auto px-4 md:px-8 py-6 w-full space-y-6">
+
+    <!-- DISCONNECTED ALERT (Appears only when hardware is off) -->
+    <div id="disconnect-alert" class="hidden bg-rose-50 border-2 border-rose-200 rounded-2xl p-4 md:p-5 flex items-center justify-between gap-4 shadow-sm">
+      <div class="flex items-center gap-3.5">
+        <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-lg flex-shrink-0">
+          <i class="fa-solid fa-circle-exclamation"></i>
+        </div>
+        <div>
+          <h3 class="text-sm md:text-base font-bold text-rose-900">Field Sensor Disconnected</h3>
+          <p class="text-xs text-rose-700 mt-0.5 font-medium">Telemetry is currently offline. Please plug in or power on your ESP32 soil probe in Field Block A-12.</p>
+        </div>
+      </div>
+      <span class="text-xs font-bold bg-rose-200 text-rose-800 px-3 py-1 rounded-lg">OFFLINE</span>
+    </div>
+
+    <!-- 1. FARMER'S DAILY ACTION BOARD (3 Cards Side-by-Side) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+
+      <!-- Card 1: Irrigation & Drip Watering -->
+      <div id="card-irrigation" class="nature-card rounded-2xl p-5 border-l-4 border-l-forest-600 flex flex-col justify-between space-y-4">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-earth-600 flex items-center gap-1.5">
+              <i class="fa-solid fa-droplet text-sky-500"></i> Water & Irrigation
+            </span>
+            <span id="pump-status-badge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-earth-100 text-earth-700">
+              IDLE (OFF)
+            </span>
+          </div>
+          <h3 id="irrigation-headline" class="text-lg font-extrabold text-earth-950 mt-2">
+            Soil Hydration Balanced
+          </h3>
+          <p id="irrigation-desc" class="text-xs text-earth-700 mt-1.5 leading-relaxed font-medium">
+            Moisture is within the healthy zone for crop growth. No watering needed at this time.
+          </p>
+        </div>
+        <div class="pt-3 border-t border-earth-100 flex items-center justify-between text-[11px] text-earth-600 font-medium">
+          <span>Target moisture: <strong>35% – 65%</strong></span>
+          <span id="irrigation-action-pill" class="text-forest-700 font-bold">Optimal Hydration</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Fertilizer Application Window -->
+      <div id="card-fertilizer" class="nature-card rounded-2xl p-5 border-l-4 border-l-amber-500 flex flex-col justify-between space-y-4">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-earth-600 flex items-center gap-1.5">
+              <i class="fa-solid fa-leaf text-forest-600"></i> Fertilizer Window
+            </span>
+            <span id="fert-status-badge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+              CHECKING
+            </span>
+          </div>
+          <h3 id="fertilizer-headline" class="text-lg font-extrabold text-earth-950 mt-2">
+            Hold Fertilizer Application
+          </h3>
+          <p id="fertilizer-desc" class="text-xs text-earth-700 mt-1.5 leading-relaxed font-medium">
+            Soil is too dry for chemical granule dissolving. Irrigate first, then apply fertilizer.
+          </p>
+        </div>
+        <div class="pt-3 border-t border-earth-100 flex items-center justify-between text-[11px] text-earth-600 font-medium">
+          <span>Root absorption risk: <strong id="fert-risk-level">High if applied now</strong></span>
+          <span class="text-amber-700 font-bold">Rain-Gated</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Weather & Sunshine Outlook -->
+      <div class="nature-card rounded-2xl p-5 border-l-4 border-l-sky-500 flex flex-col justify-between space-y-4">
+        <div>
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-earth-600 flex items-center gap-1.5">
+              <i class="fa-solid fa-cloud-sun-rain text-sky-500"></i> Field Weather Outlook
+            </span>
+            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800">
+              Dharwad Hub
+            </span>
+          </div>
+          <h3 class="text-lg font-extrabold text-earth-950 mt-2 flex items-center gap-2">
+            <span id="weather-temp-card">29.6°C</span>
+            <span class="text-xs font-semibold text-earth-600">Sunny / Clear</span>
+          </h3>
+          <p class="text-xs text-earth-700 mt-1.5 leading-relaxed font-medium">
+            Next 4 hours rain chance: <strong id="weather-rain-prob-card" class="text-sky-700 font-bold">0.0%</strong>. Expected rainfall: <strong id="weather-mm-card" class="text-sky-700 font-bold">0.0 mm</strong>.
+          </p>
+        </div>
+        <div class="pt-3 border-t border-earth-100 flex items-center justify-between text-[11px] text-earth-600 font-medium">
+          <span>Safe for field spraying: <strong class="text-forest-700">Yes</strong></span>
+          <span class="text-sky-700 font-bold">Low Leaching Risk</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 2. TWO-COLUMN OPERATIONAL GRID -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- LEFT 2 COLS: SOIL HEALTH & ROOT ENVELOPE -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- Soil 4-Dial Station -->
+        <div class="nature-card rounded-2xl p-6 space-y-5">
+          <div class="flex items-center justify-between border-b border-earth-100 pb-3">
+            <div>
+              <h3 class="text-base font-extrabold text-earth-950 flex items-center gap-2">
+                <i class="fa-solid fa-mountain text-forest-700"></i> In-Situ Soil Health Measurements
+              </h3>
+              <p class="text-xs text-earth-600 font-medium mt-0.5">Physical root-zone readings from 7-in-1 Modbus RS485 sensor</p>
+            </div>
+            <span id="probe-live-pill" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-forest-100 text-forest-800 border border-forest-200">
+              LIVE SENSOR
+            </span>
+          </div>
+
+          <!-- 4 Core Dials -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+            
+            <!-- Soil Moisture -->
+            <div class="nature-subcard rounded-xl p-4 text-center">
+              <span class="text-xs text-earth-600 font-semibold block mb-1">Soil Moisture</span>
+              <span id="metric-moist" class="text-3xl font-extrabold text-sky-600 block">--</span>
+              <span id="tag-moist" class="text-[10px] font-bold mt-1 inline-block px-2 py-0.5 rounded-full bg-earth-100 text-earth-700">Checking...</span>
+            </div>
+
+            <!-- Soil Acidity pH -->
+            <div class="nature-subcard rounded-xl p-4 text-center">
+              <span class="text-xs text-earth-600 font-semibold block mb-1">Soil Acidity (pH)</span>
+              <span id="metric-ph" class="text-3xl font-extrabold text-forest-700 block">--</span>
+              <span id="tag-ph" class="text-[10px] font-bold mt-1 inline-block px-2 py-0.5 rounded-full bg-earth-100 text-earth-700">Opt: 6.0 – 7.5</span>
+            </div>
+
+            <!-- Soil Temperature -->
+            <div class="nature-subcard rounded-xl p-4 text-center">
+              <span class="text-xs text-earth-600 font-semibold block mb-1">Soil Temp</span>
+              <span id="metric-temp" class="text-3xl font-extrabold text-amber-600 block">--</span>
+              <span class="text-[10px] font-bold mt-1 inline-block px-2 py-0.5 rounded-full bg-earth-100 text-earth-700">Root Warmth</span>
+            </div>
+
+            <!-- Salinity EC -->
+            <div class="nature-subcard rounded-xl p-4 text-center">
+              <span class="text-xs text-earth-600 font-semibold block mb-1">Salinity (EC)</span>
+              <span id="metric-ec" class="text-3xl font-extrabold text-purple-700 block">--</span>
+              <span class="text-[10px] font-bold mt-1 inline-block px-2 py-0.5 rounded-full bg-earth-100 text-earth-700">&micro;S/cm</span>
+            </div>
+
+          </div>
+
+          <!-- Soil Macronutrients (N-P-K) -->
+          <div class="nature-subcard rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between text-xs font-bold text-earth-900">
+              <span class="flex items-center gap-1.5"><i class="fa-solid fa-flask-vial text-forest-600"></i> Primary Macronutrients (N-P-K)</span>
+              <span class="text-[11px] text-earth-600 font-medium">Standard agronomic targets</span>
+            </div>
+
+            <div class="space-y-2.5">
+              <!-- Nitrogen -->
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold">
+                  <span class="text-forest-800">Nitrogen (N)</span>
+                  <span id="metric-n" class="font-mono text-earth-950 font-bold">--</span>
+                </div>
+                <div class="w-full bg-earth-200 rounded-full h-2 overflow-hidden">
+                  <div id="bar-n" class="bg-forest-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <!-- Phosphorus -->
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold">
+                  <span class="text-sky-800">Phosphorus (P)</span>
+                  <span id="metric-p" class="font-mono text-earth-950 font-bold">--</span>
+                </div>
+                <div class="w-full bg-earth-200 rounded-full h-2 overflow-hidden">
+                  <div id="bar-p" class="bg-sky-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+              </div>
+
+              <!-- Potassium -->
+              <div class="space-y-1">
+                <div class="flex justify-between text-xs font-semibold">
+                  <span class="text-amber-800">Potassium (K)</span>
+                  <span id="metric-k" class="font-mono text-earth-950 font-bold">--</span>
+                </div>
+                <div class="w-full bg-earth-200 rounded-full h-2 overflow-hidden">
+                  <div id="bar-k" class="bg-amber-600 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Real-Time Hydrology Trend Chart -->
+        <div class="nature-card rounded-2xl p-6 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-earth-100 pb-3">
+            <div>
+              <h3 class="text-base font-extrabold text-earth-950 flex items-center gap-2">
+                <i class="fa-solid fa-chart-area text-forest-700"></i> Field Hydrology Trends (Live Rolling Window)
+              </h3>
+              <p class="text-xs text-earth-600 font-medium">Tracking moisture retention and soil heat balance</p>
+            </div>
+            <div class="flex items-center gap-4 text-xs font-semibold">
+              <span class="flex items-center gap-1.5 text-sky-700"><span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span> Soil Moisture (%)</span>
+              <span class="flex items-center gap-1.5 text-amber-700"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Temperature (°C)</span>
+            </div>
+          </div>
+          <div class="h-60 w-full pt-1">
+            <canvas id="telemetryChart"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT 1 COL: CROP FOLIAGE & PRESCRIPTIONS -->
+      <div class="space-y-6">
+
+        <!-- Crop Foliage Scanner -->
+        <div class="nature-card rounded-2xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-earth-100 pb-3">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-camera text-forest-700"></i>
+              <h3 class="text-sm font-extrabold text-earth-950">Crop Foliage Scanner</h3>
+            </div>
+            <label class="cursor-pointer text-xs font-bold bg-forest-700 hover:bg-forest-800 text-white px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-arrow-up-from-bracket text-[11px]"></i> Upload Leaf
+              <input type="file" id="crop-upload" class="hidden" accept="image/*" onchange="uploadCropPhoto(event)">
+            </label>
+          </div>
+
+          <!-- Leaf Preview Photo -->
+          <div class="relative rounded-2xl overflow-hidden aspect-video bg-earth-100 border border-earth-200 shadow-inner group">
+            <img id="crop-img" src="/static/latest_crop.jpg" alt="Crop Leaf Scan" class="w-full h-full object-cover">
+            <div class="absolute bottom-2 left-2 bg-white/90 backdrop-blur text-[10px] text-earth-900 font-bold px-2 py-0.5 rounded-md border border-earth-200">
+              Optical Canopy ExG
+            </div>
+            <button onclick="triggerCamera()" class="absolute top-2 right-2 bg-white/90 hover:bg-white text-earth-800 text-xs font-semibold px-2.5 py-1 rounded-lg border border-earth-200 transition flex items-center gap-1 shadow-sm">
+              <i class="fa-solid fa-camera text-[11px] text-forest-700"></i> Snap
+            </button>
+          </div>
+
+          <!-- Optical Metrics Pill Grid -->
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="nature-subcard rounded-xl p-2.5">
+              <span class="text-[10px] text-earth-600 font-semibold block">Canopy Cover</span>
+              <span id="metric-canopy" class="text-base font-extrabold text-forest-700">--</span>
+            </div>
+            <div class="nature-subcard rounded-xl p-2.5">
+              <span class="text-[10px] text-earth-600 font-semibold block">Foliar Vigor</span>
+              <span id="metric-exg" class="text-base font-extrabold text-sky-700">--</span>
+            </div>
+            <div class="nature-subcard rounded-xl p-2.5">
+              <span class="text-[10px] text-earth-600 font-semibold block">Yellowing</span>
+              <span id="metric-yellow" class="text-base font-extrabold text-amber-700">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prescribed Fertilizer Dosages -->
+        <div class="nature-card rounded-2xl p-5 space-y-3">
+          <h3 class="text-sm font-extrabold text-earth-950 flex items-center gap-2 border-b border-earth-100 pb-2.5">
+            <i class="fa-solid fa-prescription-bottle text-forest-700"></i> Fertilizer Dosages
+          </h3>
+          <div id="fert-dose-box" class="nature-subcard rounded-xl p-3.5 text-xs text-earth-800 font-mono leading-relaxed">
+            Waiting for live soil telemetry...
+          </div>
+        </div>
+
+        <!-- Crop Suitability Ranking -->
+        <div class="nature-card rounded-2xl p-5 space-y-3">
+          <h3 class="text-sm font-extrabold text-earth-950 flex items-center gap-2 border-b border-earth-100 pb-2.5">
+            <i class="fa-solid fa-wheat-awn text-amber-600"></i> Recommended Crops for Soil
+          </h3>
+          <div id="crop-rank-list" class="space-y-2 text-xs">
+            <div class="text-earth-500 italic text-center py-2">Analyzing soil suitability...</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- 3. COLLAPSIBLE TECHNICIAN & HARDWARE DRAWER -->
+    <div class="border border-earth-200 rounded-2xl bg-white overflow-hidden shadow-sm">
+      <button onclick="toggleDiagnostics()" class="w-full px-5 py-3 flex items-center justify-between text-xs font-medium text-earth-700 hover:bg-earth-50 transition">
+        <span class="flex items-center gap-2 font-bold text-earth-800">
+          <i class="fa-solid fa-screwdriver-wrench text-earth-600"></i> Hardware & Field Node Details
+        </span>
+        <span class="flex items-center gap-2 text-[11px] text-earth-500">
+          <span>ESP32-WROOM-32 • RS485 Modbus Bus</span>
+          <i id="diag-chevron" class="fa-solid fa-chevron-down text-earth-500 transition"></i>
+        </span>
+      </button>
+
+      <div id="diagnostics-panel" class="hidden p-5 border-t border-earth-100 bg-earth-50/60 space-y-3">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div class="bg-white p-3 rounded-xl border border-earth-200">
+            <span class="text-earth-500 block text-[10px] uppercase font-bold">DEVICE</span>
+            <span class="text-earth-900 font-bold">ESP32 Dev Module</span>
+          </div>
+          <div class="bg-white p-3 rounded-xl border border-earth-200">
+            <span class="text-earth-500 block text-[10px] uppercase font-bold">COMMUNICATION</span>
+            <span class="text-forest-700 font-bold font-mono">RS485 Modbus RTU (ID 5)</span>
+          </div>
+          <div class="bg-white p-3 rounded-xl border border-earth-200">
+            <span class="text-earth-500 block text-[10px] uppercase font-bold">EDGE SAFETY REFLEX</span>
+            <span class="text-sky-700 font-bold font-mono">&lt; 1 ms Cutoff Latency</span>
+          </div>
+          <div class="bg-white p-3 rounded-xl border border-earth-200">
+            <span class="text-earth-500 block text-[10px] uppercase font-bold">SERIAL PORT</span>
+            <span class="text-earth-900 font-bold font-mono">/dev/ttyUSB0 @ 115200</span>
+          </div>
+        </div>
+
+        <div>
+          <div class="text-[11px] font-semibold text-earth-700 mb-1 flex items-center justify-between">
+            <span>Raw Modbus Stream (ESP32):</span>
+            <span class="text-[10px] text-earth-500">Live Hardware Serial Terminal</span>
+          </div>
+          <div id="serial-terminal" class="bg-earth-950 rounded-xl p-3 border border-earth-800 font-mono text-xs text-forest-400 overflow-x-auto max-h-36 leading-relaxed space-y-0.5">
+            <div class="text-earth-500">// Connecting to ESP32 stream...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- NATURAL FOOTER -->
+  <footer class="max-w-7xl mx-auto px-4 md:px-8 py-4 text-xs text-earth-500 border-t border-earth-200/60 flex flex-col sm:flex-row items-center justify-between gap-2 mt-8 w-full">
+    <div class="flex items-center gap-2">
+      <span class="font-bold text-earth-700">VerdantFarm™ Field OS</span>
+      <span>•</span>
+      <span>Precision Agriculture & In-Situ Hydrology Hub</span>
+    </div>
+    <div class="text-earth-400">
+      Last Synced: <span id="sync-time" class="font-mono text-earth-600">--</span>
+    </div>
+  </footer>
+
+  <!-- THINGSPEAK CLOUD MODAL -->
+  <div id="thingspeak-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-6 md:p-8 max-w-lg w-full border border-earth-200 shadow-2xl space-y-5">
+      <div class="flex items-center justify-between border-b border-earth-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center text-lg font-bold border border-sky-100">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-extrabold text-earth-950">ThingSpeak Cloud Sync</h3>
+            <p class="text-xs text-earth-600">MathWorks Cloud IoT Broker Integration</p>
+          </div>
+        </div>
+        <button onclick="closeThingSpeakModal()" class="text-slate-400 hover:text-slate-700 text-lg p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-earth-800 mb-1">ThingSpeak Write API Key</label>
+          <input id="ts-key-input" type="text" placeholder="e.g. 7K9J2L9X9XYZ1234" class="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 bg-earth-50/50 font-mono text-earth-900 focus:outline-none focus:ring-2 focus:ring-forest-500 text-xs">
+          <p class="text-[11px] text-earth-500 mt-1">Found under your Channel &rarr; <strong>API Keys</strong> tab on ThingSpeak.</p>
+        </div>
+
+        <div>
+          <label class="block font-bold text-earth-800 mb-1">Channel ID (Optional)</label>
+          <input id="ts-channel-input" type="text" placeholder="e.g. 2841920" class="w-full px-3.5 py-2.5 rounded-xl border border-earth-200 bg-earth-50/50 font-mono text-earth-900 focus:outline-none focus:ring-2 focus:ring-forest-500 text-xs">
+          <p class="text-[11px] text-earth-500 mt-1">Found on your Channel Overview page.</p>
+        </div>
+
+        <div id="ts-public-link-box" class="hidden p-3 rounded-xl bg-sky-50 border border-sky-200 text-sky-800">
+          <span class="font-bold block mb-1">Live Cloud Dashboard URL:</span>
+          <a id="ts-public-url" href="#" target="_blank" class="underline font-mono text-[11px] break-all text-sky-700 hover:text-sky-900"></a>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-2">
+        <a href="https://thingspeak.mathworks.com/channels/new" target="_blank" class="text-xs text-forest-700 hover:underline font-semibold flex items-center gap-1">
+          <span>Create Free Channel</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+        </a>
+        <div class="flex items-center gap-2">
+          <button onclick="closeThingSpeakModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-earth-700 hover:bg-earth-100 transition">Cancel</button>
+          <button onclick="saveThingSpeak()" class="px-5 py-2 rounded-xl text-xs font-bold bg-forest-700 hover:bg-forest-800 text-white transition shadow-sm">Save & Connect</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LIVE TELEMETRY ENGINE -->
+  <script>
+    // Initialize Chart.js with Nature Theme
+    const ctx = document.getElementById('telemetryChart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [
+          {
+            label: 'Moisture (%)',
+            borderColor: '#0284c7', // Sky blue
+            backgroundColor: 'rgba(2, 132, 199, 0.08)',
+            data: [],
+            tension: 0.35,
+            fill: true,
+            borderWidth: 2.5,
+            pointRadius: 2,
+            pointBackgroundColor: '#0284c7'
+          },
+          {
+            label: 'Soil Temp (°C)',
+            borderColor: '#d97706', // Warm amber
+            backgroundColor: 'transparent',
+            data: [],
+            tension: 0.35,
+            borderWidth: 2.5,
+            pointRadius: 2,
+            pointBackgroundColor: '#d97706'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { 
+            grid: { color: 'rgba(100, 116, 139, 0.08)' }, 
+            ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 10 } } 
+          },
+          y: { 
+            grid: { color: 'rgba(100, 116, 139, 0.08)' }, 
+            ticks: { color: '#64748b', font: { family: 'Plus Jakarta Sans', size: 10 } } 
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
+      }
+    });
+
+    // Toggle Collapsible Diagnostics Panel
+    function toggleDiagnostics() {
+      const panel = document.getElementById('diagnostics-panel');
+      const chevron = document.getElementById('diag-chevron');
+      panel.classList.toggle('hidden');
+      chevron.classList.toggle('rotate-180');
+    }
+
+    // Poll Telemetry API
+    async function updateTelemetry() {
+      try {
+        const res = await fetch('/api/telemetry');
+        const data = await res.json();
+
+        const nodeDot = document.getElementById('node-dot');
+        const nodeStatus = document.getElementById('node-status');
+        const disconnectAlert = document.getElementById('disconnect-alert');
+        const probeLivePill = document.getElementById('probe-live-pill');
+        const syncTime = document.getElementById('sync-time');
+        const term = document.getElementById('serial-terminal');
+
+        syncTime.innerText = new Date().toLocaleTimeString();
+
+        // -------------------------------------------------------------
+        // A. HARDWARE DISCONNECTED STATE
+        // -------------------------------------------------------------
+        if (!data.hardware_connected) {
+          disconnectAlert.classList.remove('hidden');
+          nodeDot.className = "w-2.5 h-2.5 rounded-full bg-rose-500";
+          nodeStatus.innerText = "Field Sensor Offline";
+          nodeStatus.className = "text-rose-600 font-bold";
+
+          if (probeLivePill) {
+            probeLivePill.innerText = "SENSOR OFFLINE";
+            probeLivePill.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200";
+          }
+
+          // Clear metric numbers
+          document.getElementById('metric-moist').innerText = '--';
+          document.getElementById('metric-ph').innerText = '--';
+          document.getElementById('metric-temp').innerText = '--';
+          document.getElementById('metric-ec').innerText = '--';
+          document.getElementById('metric-n').innerText = '--';
+          document.getElementById('metric-p').innerText = '--';
+          document.getElementById('metric-k').innerText = '--';
+          document.getElementById('tag-moist').innerText = 'Sensor Offline';
+          document.getElementById('bar-n').style.width = '0%';
+          document.getElementById('bar-p').style.width = '0%';
+          document.getElementById('bar-k').style.width = '0%';
+
+          // Reset Action Cards
+          document.getElementById('irrigation-headline').innerText = "Field Telemetry Offline";
+          document.getElementById('irrigation-desc').innerText = "Please power on or plug in the ESP32 soil probe to view real-time irrigation advice.";
+          document.getElementById('pump-status-badge').innerText = "OFFLINE";
+          document.getElementById('pump-status-badge').className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800";
+
+          document.getElementById('fertilizer-headline').innerText = "Advisory Paused";
+          document.getElementById('fertilizer-desc').innerText = "Cannot evaluate soil nutrient status while the sensor is disconnected.";
+          document.getElementById('fert-status-badge').innerText = "OFFLINE";
+          document.getElementById('fert-status-badge').className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800";
+
+          document.getElementById('fert-dose-box').innerHTML = '<span class="text-earth-400">Sensor offline. Plug in probe to calculate fertilizer amounts.</span>';
+          document.getElementById('crop-rank-list').innerHTML = '<div class="text-earth-400 italic text-center py-2">Sensor offline.</div>';
+
+          // Terminal logs
+          if (data.serial_logs && data.serial_logs.length > 0) {
+            term.innerHTML = data.serial_logs.map(l => `<div>&gt; ${l}</div>`).join('');
+          } else {
+            term.innerHTML = '<div class="text-rose-400 font-bold">[OFFLINE] /dev/ttyUSB0 is closed. Connect ESP32 to stream live Modbus data.</div>';
+          }
+
+          return; // Stop here: do not push points to the chart when disconnected
+        }
+
+        // -------------------------------------------------------------
+        // B. HARDWARE CONNECTED & STREAMING
+        // -------------------------------------------------------------
+        disconnectAlert.classList.add('hidden');
+        nodeDot.className = "w-2.5 h-2.5 rounded-full bg-forest-600 pulse-live";
+        nodeStatus.innerText = "Field Sensor Active";
+        nodeStatus.className = "text-forest-700 font-bold";
+
+        if (probeLivePill) {
+          probeLivePill.innerText = "LIVE SENSOR (RS485)";
+          probeLivePill.className = "text-[11px] font-bold px-2.5 py-1 rounded-full bg-forest-100 text-forest-800 border border-forest-200";
+        }
+
+        // 1. Update Soil Measurements
+        const m = data.soil.moisture;
+        document.getElementById('metric-moist').innerText = m.toFixed(1) + '%';
+        const tagMoist = document.getElementById('tag-moist');
+        if (m < 20.0) {
+          tagMoist.innerText = "⚠️ Critical Dry";
+          tagMoist.className = "text-[10px] font-bold mt-1 inline-block px-2 py-0.5 rounded-full bg-rose-100 text-rose-800";
+        } else if (m > 65.0) {
+          tagMoist.innerText = "💧 Waterlogged";
+          tagMoist.className = "text-[10px] font-bold mt-1 inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-800";
+        } else {
+          tagMoist.innerText = "✅ Optimal Range";
+          tagMoist.className = "text-[10px] font-bold mt-1 inline-block px-2 py-0.5 rounded-full bg-forest-100 text-forest-800";
+        }
+
+        document.getElementById('metric-ph').innerText = data.soil.ph.toFixed(1);
+        document.getElementById('metric-temp').innerText = data.soil.temp.toFixed(1) + ' °C';
+        document.getElementById('metric-ec').innerText = data.soil.ec;
+        document.getElementById('metric-n').innerText = data.soil.n + ' mg/kg';
+        document.getElementById('metric-p').innerText = data.soil.p + ' mg/kg';
+        document.getElementById('metric-k').innerText = data.soil.k + ' mg/kg';
+        document.getElementById('bar-n').style.width = Math.min(100, (data.soil.n / 70) * 100) + '%';
+        document.getElementById('bar-p').style.width = Math.min(100, (data.soil.p / 50) * 100) + '%';
+        document.getElementById('bar-k').style.width = Math.min(100, (data.soil.k / 80) * 100) + '%';
+
+        // 2. Update Weather Cards & Header
+        document.getElementById('top-weather-temp').innerText = data.weather.temp + '°C';
+        document.getElementById('top-weather-rain').innerText = data.weather.rain_prob_next_4h + '%';
+        document.getElementById('weather-temp-card').innerText = data.weather.temp + '°C';
+        document.getElementById('weather-rain-prob-card').innerText = data.weather.rain_prob_next_4h + '%';
+        document.getElementById('weather-mm-card').innerText = data.weather.rain_mm + ' mm';
+
+        // 3. Update Action Cards (Irrigation & Fertilizer)
+        const action = data.ai.irrigation_decision.action;
+        const reason = data.ai.irrigation_decision.reason;
+        const cardIrrig = document.getElementById('card-irrigation');
+        const badgeIrrig = document.getElementById('pump-status-badge');
+        const headIrrig = document.getElementById('irrigation-headline');
+        const descIrrig = document.getElementById('irrigation-desc');
+        const pillIrrig = document.getElementById('irrigation-action-pill');
+
+        if (action === 'PUMP_ON') {
+          cardIrrig.className = "nature-card rounded-2xl p-5 border-l-4 border-l-sky-600 bg-sky-50/40 flex flex-col justify-between space-y-4 shadow-sm";
+          badgeIrrig.innerText = "PUMP RUNNING 🟢";
+          badgeIrrig.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-300 animate-pulse";
+          headIrrig.innerText = "Drip Irrigation Active";
+          descIrrig.innerText = reason + " The automated pump is running to replenish soil moisture.";
+          pillIrrig.innerText = "Actively Watering";
+          pillIrrig.className = "text-sky-700 font-bold";
+        } else if (action === 'PUMP_DEFERRED') {
+          cardIrrig.className = "nature-card rounded-2xl p-5 border-l-4 border-l-amber-500 bg-amber-50/40 flex flex-col justify-between space-y-4 shadow-sm";
+          badgeIrrig.innerText = "RAIN-GATED 🌧️";
+          badgeIrrig.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300";
+          headIrrig.innerText = "Irrigation Paused for Rain";
+          descIrrig.innerText = reason + " Pumping is withheld to conserve power and avoid waterlogging.";
+          pillIrrig.innerText = "Waiting for Rain";
+          pillIrrig.className = "text-amber-700 font-bold";
+        } else {
+          cardIrrig.className = "nature-card rounded-2xl p-5 border-l-4 border-l-forest-600 flex flex-col justify-between space-y-4";
+          badgeIrrig.innerText = "IDLE (OFF)";
+          badgeIrrig.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-forest-100 text-forest-800";
+          headIrrig.innerText = "Soil Hydration Optimal";
+          descIrrig.innerText = reason + " Moisture is well-balanced. No supplemental irrigation needed today.";
+          pillIrrig.innerText = "Balanced Moisture";
+          pillIrrig.className = "text-forest-700 font-bold";
+        }
+
+        // Fertilizer Card
+        const fertTiming = data.ai.fertilizer_advisory.timing_status;
+        const fertMsg = data.ai.fertilizer_advisory.timing_message;
+        const fertBadge = document.getElementById('fert-status-badge');
+        const fertHead = document.getElementById('fertilizer-headline');
+        const fertDesc = document.getElementById('fertilizer-desc');
+        const fertRisk = document.getElementById('fert-risk-level');
+
+        if (fertTiming === 'APPROVED_APPLICATION') {
+          fertBadge.innerText = "APPROVED ✅";
+          fertBadge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-forest-100 text-forest-800";
+          fertHead.innerText = "Good Window to Fertilize";
+          fertDesc.innerText = fertMsg;
+          fertRisk.innerText = "Low risk (Ideal moisture)";
+        } else if (fertTiming === 'BLOCKED_DRY_SOIL') {
+          fertBadge.innerText = "HOLD: DRY SOIL ⚠️";
+          fertBadge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800";
+          fertHead.innerText = "Hold Fertilizer Application";
+          fertDesc.innerText = fertMsg;
+          fertRisk.innerText = "High burn risk (Soil dry)";
+        } else {
+          fertBadge.innerText = "DEFER: RAIN RISK 🛑";
+          fertBadge.className = "text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800";
+          fertHead.innerText = "Hold Fertilizer (Rain Runoff)";
+          fertDesc.innerText = fertMsg;
+          fertRisk.innerText = "High leaching / runoff risk";
+        }
+
+        // 4. Update Crop Foliage
+        document.getElementById('metric-canopy').innerText = data.crop.canopy_cover_pct.toFixed(1) + '%';
+        document.getElementById('metric-exg').innerText = data.crop.exg.toFixed(3);
+        document.getElementById('metric-yellow').innerText = data.crop.yellowing_pct.toFixed(1) + '%';
+
+        // 5. Update Fertilizer Dosages
+        const doseBox = document.getElementById('fert-dose-box');
+        if (data.ai.fertilizer_advisory.fertilizers.length > 0) {
+          doseBox.innerHTML = '• ' + data.ai.fertilizer_advisory.fertilizers.join('<br>• ');
+        } else {
+          doseBox.innerHTML = '✅ Soil nutrients balanced. No synthetic fertilizer required.';
+        }
+
+        // 6. Update Crop Suitability Matches
+        const rankList = document.getElementById('crop-rank-list');
+        rankList.innerHTML = '';
+        data.ai.crop_rankings.forEach((c, idx) => {
+          const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
+          const badgeClass = idx === 0 ? 'bg-forest-100 text-forest-800 border-forest-200' : 'bg-earth-100 text-earth-800 border-earth-200';
+          rankList.innerHTML += `
+            <div class="flex items-center justify-between p-2 rounded-xl bg-earth-50 border border-earth-200">
+              <span class="font-semibold text-earth-900">${medal} ${c.crop}</span>
+              <span class="text-[11px] font-mono px-2 py-0.5 rounded border ${badgeClass} font-bold">${c.match_pct}% Match</span>
+            </div>
+          `;
+        });
+
+        // 7. Update Real-Time Chart
+        const now = new Date().toLocaleTimeString();
+        if (chart.data.labels.length > 20) {
+          chart.data.labels.shift();
+          chart.data.datasets[0].data.shift();
+          chart.data.datasets[1].data.shift();
+        }
+        chart.data.labels.push(now);
+        chart.data.datasets[0].data.push(data.soil.moisture);
+        chart.data.datasets[1].data.push(data.soil.temp);
+        chart.update();
+
+        // 8. Stream Logs to Terminal
+        if (data.serial_logs && data.serial_logs.length > 0) {
+          term.innerHTML = data.serial_logs.map(l => `<div>&gt; ${l}</div>`).join('');
+          term.scrollTop = term.scrollHeight;
+        }
+
+      } catch (err) {
+        console.error("Dashboard update error:", err);
+      }
+    }
+
+    // Photo Upload Handler
+    async function uploadCropPhoto(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('image', file);
+
+      try {
+        const res = await fetch('/api/upload_crop_image', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          document.getElementById('crop-img').src = '/static/latest_crop.jpg?t=' + new Date().getTime();
+          updateTelemetry();
+        }
+      } catch (e) {
+        alert("Upload error: " + e);
+      }
+    }
+
+    // Camera Trigger
+    async function triggerCamera() {
+      try {
+        const res = await fetch('/api/trigger_camera', { method: 'POST' });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          document.getElementById('crop-img').src = '/static/latest_crop.jpg?t=' + new Date().getTime();
+          updateTelemetry();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // ThingSpeak Modal Controls
+    async function openThingSpeakModal() {
+      try {
+        const res = await fetch('/api/thingspeak');
+        const data = await res.json();
+        if (data.api_key) document.getElementById('ts-key-input').value = data.api_key;
+        if (data.channel_id) {
+          document.getElementById('ts-channel-input').value = data.channel_id;
+          const pubBox = document.getElementById('ts-public-link-box');
+          const pubUrl = document.getElementById('ts-public-url');
+          pubBox.classList.remove('hidden');
+          pubUrl.href = `https://thingspeak.mathworks.com/channels/${data.channel_id}`;
+          pubUrl.innerText = `https://thingspeak.mathworks.com/channels/${data.channel_id}`;
+        }
+      } catch (e) {}
+      document.getElementById('thingspeak-modal').classList.remove('hidden');
+    }
+
+    function closeThingSpeakModal() {
+      document.getElementById('thingspeak-modal').classList.add('hidden');
+    }
+
+    async function saveThingSpeak() {
+      const apiKey = document.getElementById('ts-key-input').value.trim();
+      const channelId = document.getElementById('ts-channel-input').value.trim();
+      if (!apiKey) {
+        alert("Please paste your ThingSpeak Write API Key.");
+        return;
+      }
+      try {
+        const res = await fetch('/api/thingspeak', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ api_key: apiKey, channel_id: channelId })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          alert("✅ Connected to ThingSpeak Cloud! Telemetry will sync every 16 seconds.");
+          closeThingSpeakModal();
+        }
+      } catch (e) {
+        alert("Save error: " + e);
+      }
+    }
+
+    // Poll every 2 seconds
+    setInterval(updateTelemetry, 2000);
+    updateTelemetry();
+  </script>
+</body>
+</html>

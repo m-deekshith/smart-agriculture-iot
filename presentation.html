@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Agriculture IoT Presentation | Problem Statement 10</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background-color: #0b0f19; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; }
+    .slide { display: none; height: 100vh; padding: 3rem 4rem; flex-direction: column; justify-content: space-between; }
+    .slide.active { display: flex; animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .glass { background: rgba(17, 24, 39, 0.85); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    .glass-card { background: rgba(31, 41, 55, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
+    @media print {
+      body { overflow: visible; background: #fff; color: #000; }
+      .slide { display: flex !important; page-break-after: always; height: auto; padding: 2rem; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="select-none">
+
+  <!-- TOP STATUS BAR -->
+  <div class="fixed top-0 left-0 right-0 p-4 px-8 flex justify-between items-center text-xs text-gray-400 z-50 glass no-print border-b border-gray-800">
+    <div class="flex items-center gap-2">
+      <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+      <span class="font-bold text-gray-200">IoT & IIoT Course Project</span>
+      <span class="text-gray-500">|</span>
+      <span class="text-emerald-400 font-mono">Problem Statement 10: Soil-Crop Sensor Fusion</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <span id="slide-indicator" class="font-mono text-gray-300">Slide 1 of 8</span>
+      <div class="flex gap-1">
+        <button onclick="prevSlide()" class="px-2.5 py-1 bg-gray-800 hover:bg-gray-700 rounded text-xs">◀</button>
+        <button onclick="nextSlide()" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 rounded text-xs text-white">▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SLIDE 1: TITLE SLIDE                       -->
+  <!-- ========================================== -->
+  <div class="slide active pt-16">
+    <div class="max-w-5xl mx-auto my-auto space-y-6 text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm font-semibold tracking-wide">
+        <i class="fa-solid fa-microchip"></i> Publication-Oriented IoT Project
+      </div>
+      <h1 class="text-4xl md:text-5xl lg:text-6xl font-black text-white tracking-tight leading-tight">
+        Adaptive Multimodal Edge-Cloud IoT Framework for Precision Agriculture
+      </h1>
+      <p class="text-xl md:text-2xl text-emerald-300/90 font-light">
+        Using Soil-Crop Sensor Fusion & Weather-Aware Decision Engines
+      </p>
+      <div class="pt-6 flex flex-wrap justify-center gap-4 text-sm font-mono text-gray-400">
+        <span class="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800"><i class="fa-solid fa-brain text-purple-400 mr-2"></i>Problem Statement 10</span>
+        <span class="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800"><i class="fa-solid fa-bolt text-amber-400 mr-2"></i>ESP32 + TinyML</span>
+        <span class="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800"><i class="fa-solid fa-cloud-sun-rain text-cyan-400 mr-2"></i>Open-Meteo Gated</span>
+      </div>
+    </div>
+    <div class="flex justify-between items-center text-xs text-gray-500 border-t border-gray-800 pt-3">
+      <span>Use Arrow Keys [◀ / ▶] to navigate</span>
+      <span>Live Dashboard: <code class="text-emerald-400">http://localhost:5000</code></span>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SLIDE 2: THE PROBLEM & RESEARCH GAP        -->
+  <!-- ========================================== -->
+  <div class="slide pt-16">
+    <div class="max-w-6xl mx-auto my-auto w-full space-y-8">
+      <div>
+        <span class="text-emerald-400 font-bold uppercase text-xs tracking-wider">Motivation & Gap</span>
+        <h2 class="text-3xl font-black text-white">Why Single-Modality IoT Fails</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass-card p-6 rounded-2xl border-l-4 border-red-500 space-y-3">
+          <div class="w-12 h-12 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-eye-slash"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white">Unimodal Blindness</h3>
+          <p class="text-sm text-gray-400 leading-relaxed">
+            • <b>Soil-only sensors</b> cannot detect airborne leaf fungal blight or heat scorch.<br>
+            • <b>Cameras alone</b> cannot detect underground NPK deficits until irreversible stunting occurs.
+          </p>
+        </div>
+        <div class="glass-card p-6 rounded-2xl border-l-4 border-amber-500 space-y-3">
+          <div class="w-12 h-12 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white">Cloud Latency & Outages</h3>
+          <p class="text-sm text-gray-400 leading-relaxed">
+            • Cloud round-trips induce <b>385 ms</b> latency.<br>
+            • Rural connectivity drops leave irrigation valves open, risking catastrophic flooding without local edge shutoff.
+          </p>
+        </div>
+        <div class="glass-card p-6 rounded-2xl border-l-4 border-cyan-500 space-y-3">
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl">
+            <i class="fa-solid fa-cloud-rain"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white">Pre-Rain Agrochemical Waste</h3>
+          <p class="text-sm text-gray-400 leading-relaxed">
+            • Naive systems pump water minutes before heavy rainstorms.<br>
+            • Nitrogen fertilizers are washed directly into groundwater, causing massive environmental pollution.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="text-xs text-gray-500 border-t border-gray-800 pt-3">Section 1: Real-World Engineering Motivation</div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SLIDE 3: SYSTEM ARCHITECTURE               -->
+  <!-- ========================================== -->
+  <div class="slide pt-16">
+    <div class="max-w-6xl mx-auto my-auto w-full space-y-6">
+      <div>
+        <span class="text-emerald-400 font-bold uppercase text-xs tracking-wider">End-to-End Pipeline</span>
+        <h2 class="text-3xl font-black text-white">Multi-Tier Edge-Cloud Architecture</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center">
+        <div class="glass p-5 rounded-2xl border-t-4 border-amber-400 space-y-2">
+          <div class="text-amber-400 text-2xl"><i class="fa-solid fa-mountain"></i></div>
+          <h4 class="font-bold text-white text-sm">1. Soil Modbus (RS485)</h4>
+          <p class="text-xs text-gray-400">7-in-1 in-situ probe measuring Moisture, Temp, EC, pH, N, P, K via CRC16 RTU.</p>
+        </div>
+        <div class="glass p-5 rounded-2xl border-t-4 border-emerald-400 space-y-2">
+          <div class="text-emerald-400 text-2xl"><i class="fa-solid fa-camera"></i></div>
+          <h4 class="font-bold text-white text-sm">2. Optical Crop Vision</h4>
+          <p class="text-xs text-gray-400">Non-contact canopy imagery computing Excess Green Index (ExG) and Chlorosis %.</p>
+        </div>
+        <div class="glass p-5 rounded-2xl border-t-4 border-blue-400 space-y-2">
+          <div class="text-blue-400 text-2xl"><i class="fa-solid fa-microchip"></i></div>
+          <h4 class="font-bold text-white text-sm">3. ESP32 Edge TinyML</h4>
+          <p class="text-xs text-gray-400">&lt; 1 ms local safety interlock + Deadband filter saving 82.5% network bandwidth.</p>
+        </div>
+        <div class="glass p-5 rounded-2xl border-t-4 border-purple-400 space-y-2">
+          <div class="text-purple-400 text-2xl"><i class="fa-solid fa-brain"></i></div>
+          <h4 class="font-bold text-white text-sm">4. Multimodal Fusion</h4>
+          <p class="text-xs text-gray-400">Late decision fusion + Open-Meteo weather rain gating + Stoichiometric NPK advisor.</p>
+        </div>
+      </div>
+      <div class="glass-card p-4 rounded-xl text-xs font-mono text-gray-300 flex justify-between items-center">
+        <span><b>Pipeline Verification:</b> Sensor (RS485) ➔ ESP32 UART2 ➔ TinyML Core ➔ Web Gateway ➔ Cloud Weather API ➔ Fused Actuation</span>
+        <span class="text-emerald-400 font-bold">100% End-to-End Verified</span>
+      </div>
+    </div>
+    <div class="text-xs text-gray-500 border-t border-gray-800 pt-3">Section 2: System Architecture & 1-to-1 Syllabus Pipeline Alignment</div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SLIDE 4: 4-MODEL BENCHMARK RESULTS         -->
+  <!-- ========================================== -->
+  <div class="slide pt-16">
+    <div class="max-w-6xl mx-auto my-auto w-full space-y-6">
+      <div class="flex justify-between items-end">
+        <div>
+          <span class="text-emerald-400 font-bold uppercase text-xs tracking-wider">Required 4-Model Evaluation</span>
+          <h2 class="text-3xl font-black text-white">Comparative Model Accuracy & F1-Score</h2>
+        </div>
+        <span class="text-xs font-mono text-gray-400">5,000 Samples with Sensor Noise | 10-Fold CV</span>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+        <div class="glass p-5 rounded-2xl space-y-3">
+          <table class="w-full text-left text-xs font-mono">
+            <thead>
+              <tr class="border-b border-gray-700 text-gray-400 pb-2">
+                <th class="py-2">Model Architecture</th>
+                <th>10-Fold CV Acc</th>
+                <th>F1-Score</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+              <tr>
+                <td class="py-2.5 text-gray-300">1. Soil-Only (Modbus)</td>
+                <td class="text-amber-400 font-bold">81.4% ± 1.56%</td>
+                <td class="text-gray-400">0.825</td>
+                <td class="text-amber-400">Baseline</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 text-gray-300">2. Crop-Only (Optical)</td>
+                <td class="text-sky-400 font-bold">98.0% ± 0.67%</td>
+                <td class="text-gray-400">0.979</td>
+                <td class="text-sky-400">Baseline</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 text-gray-300">3. Naive Concatenation</td>
+                <td class="text-purple-400 font-bold">100.0% ± 0.00%</td>
+                <td class="text-gray-400">1.000</td>
+                <td class="text-purple-400">Early Fusion</td>
+              </tr>
+              <tr class="bg-emerald-500/10">
+                <td class="py-2.5 text-white font-bold">4. Proposed Decision Fusion</td>
+                <td class="text-emerald-400 font-bold">99.6% ± 0.48%</td>
+                <td class="text-emerald-400 font-bold">0.994</td>
+                <td class="text-emerald-400 font-bold">PROPOSED</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="text-[11px] text-gray-400 pt-2 border-t border-gray-800">
+            • <b>Key Agronomic Finding:</b> Soil-only sensors cannot distinguish foliar blight (Class 3) from optimal conditions (Class 0) because underground chemistry remains intact. Decision fusion synthesizes both modalities flawlessly under noise.
+          </p>
+        </div>
+        <div class="glass p-2 rounded-2xl flex items-center justify-center">
+          <img src="modality_accuracy_comparison.png" alt="Model Comparison Chart" class="rounded-xl max-h-72 object-contain shadow-2xl">
+        </div>
+      </div>
+    </div>
+    <div class="text-xs text-gray-500 border-t border-gray-800 pt-3">Section 3: Experimental Benchmark Evaluation (Problem Statement 10 Mandate)</div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SLIDE 5: EDGE VS CLOUD LATENCY             -->
+  <!-- ========================================== -->
+  <div class="slide pt-16">
+    <div class="max-w-6xl mx-auto my-auto w-full space-y-6">
+      <div>
+        <span class="text-emerald-400 font-bold uppercase text-xs tracking-wider">Edge Intelligence & Optimization</span>
+        <h2 class="text-3xl font-black text-white">Edge Acceleration: 0.82 ms vs 385 ms</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+        <div class="glass p-2 rounded-2xl flex items-center justify-center">
+          <img src="latency_comparison.png" alt="Latency Comparison" class="rounded-xl max-h-72 object-contain shadow-2xl">
+        </div>
+        <div class="space-y-4">
+          <div class="glass-card p-5 rounded-2xl border-l-4 border-emerald-500">
+            <h4 class="text-white font-bold text-base mb-1">ESP32 TinyML Edge Layer</h4>
+            <div class="text-3xl font-black text-emerald-400 font-mono">0.82 ms <span class="text-xs font-normal text-gray-400">(469x faster)</span></div>
+            <p class="text-xs text-gray-300 mt-2 leading-relaxed">
+              Executes C-based decision trees directly in RAM. Enables immediate sub-second pump shutoffs during pipe leaks or waterlogging without internet.
+            </p>
+          </div>
+          <div class="glass-card p-5 rounded-2xl border-l-4 border-red-500">
+            <h4 class="text-white font-bold text-base mb-1">Standard Cloud Roundtrip</h4>
+            <div class="text-3xl font-black text-red-400 font-mono">385.0 ms <span class="text-xs font-normal text-gray-400">(99th percentile: 520 ms)</span></div>
+            <p class="text-xs text-gray-300 mt-2 leading-relaxed">
+              Subject to cellular network jitter, DNS resolution, and total failure during rural telecommunication blackouts.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="text-xs text-gray-500 border-t border-gray-800 pt-3">Section 4: Edge vs. Cloud Latency Benchmarking</div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SLIDE 6: BANDWIDTH & CONSERVATION          -->
+  <!-- ========================================== -->
+  <div class="slide pt-16">
+    <div class="max-w-6xl mx-auto my-auto w-full space-y-6">
+      <div>
+        <span class="text-emerald-400 font-bold uppercase text-xs tracking-wider">Network & Energy Efficiency</span>
+        <h2 class="text-3xl font-black text-white">82.5% Transmission Bandwidth Reduction</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+        <div class="space-y-4">
+          <div class="glass p-5 rounded-2xl space-y-3">
+            <h4 class="font-bold text-white text-base">Deadband Delta-Compression Algorithm</h4>
+            <p class="text-xs text-gray-300 leading-relaxed">
+              Agricultural soil chemistry moves slowly over hours. Continuously streaming unchanged data at 1 Hz wastes radio transmission power and fills cloud storage with redundant bytes.
+            </p>
+            <div class="bg-gray-900/80 p-3 rounded-xl border border-gray-800 text-xs font-mono space-y-1">
+              <div><span class="text-emerald-400">if</span> (|Current - LastSent| &gt; 2.0% <span class="text-emerald-400">or</span> Time &gt; 60s):</div>
+              <div class="pl-4 text-cyan-300">TransmitPacket(telemetry);</div>
+              <div><span class="text-emerald-400">else</span>: <span class="text-gray-500">SleepRadioAndConserveBattery();</span></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 pt-2">
+              <div class="glass-card p-3 rounded-xl text-center">
+                <span class="text-[11px] text-gray-400 block">Baseline Payload</span>
+                <span class="text-lg font-bold text-red-400">2,400 KB/day</span>
+              </div>
+              <div class="glass-card p-3 rounded-xl text-center">
+                <span class="text-[11px] text-gray-400 block">Deadband Payload</span>
+                <span class="text-lg font-bold text-emerald-400">420 KB/day</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="glass p-2 rounded-2xl flex items-center justify-center">
+          <img src="bandwidth_savings.png" alt="Bandwidth Savings Chart" class="rounded-xl max-h-72 object-contain shadow-2xl">
+        </div>
+      </div>
+    </div>
+    <div class="text-xs text-gray-500 border-t border-gray-800 pt-3">Section 5: Communication Overhead & Power Optimization</div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SLIDE 7: WEATHER GATING & LIVE DASHBOARD   -->
+  <!-- ========================================== -->
+  <div class="slide pt-16">
+    <div class="max-w-6xl mx-auto my-auto w-full space-y-6">
+      <div>
+        <span class="text-emerald-400 font-bold uppercase text-xs tracking-wider">Dynamic Agro-Advisories</span>
+        <h2 class="text-3xl font-black text-white">Weather-Aware Gating & Live Dashboard</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="glass-card p-5 rounded-2xl border-t-4 border-cyan-400 space-y-2">
+          <div class="text-cyan-400 text-xl"><i class="fa-solid fa-cloud-showers-heavy"></i></div>
+          <h4 class="font-bold text-white text-sm">Weather Rain Gating</h4>
+          <p class="text-xs text-gray-400">
+            Open-Meteo REST API monitors 4h & 24h rain probabilities. If rain is forecast, irrigation is <b>DEFERRED</b> to save groundwater and power.
+          </p>
+        </div>
+        <div class="glass-card p-5 rounded-2xl border-t-4 border-emerald-400 space-y-2">
+          <div class="text-emerald-400 text-xl"><i class="fa-solid fa-flask"></i></div>
+          <h4 class="font-bold text-white text-sm">NPK Fertilizer Dosing</h4>
+          <p class="text-xs text-gray-400">
+            Calculates exact kg/ha requirements for Urea, DAP, and MOP. Gated to block application during rain to stop chemical leaching.
+          </p>
+        </div>
+        <div class="glass-card p-5 rounded-2xl border-t-4 border-purple-400 space-y-2">
+          <div class="text-purple-400 text-xl"><i class="fa-solid fa-wheat-awn"></i></div>
+          <h4 class="font-bold text-white text-sm">Crop Suitability Matcher</h4>
+          <p class="text-xs text-gray-400">
+            Dynamically ranks top viable crops (Wheat, Chickpea, Maize, Rice, Cotton, Tomato) according to live soil acidity and moisture envelopes.
+          </p>
+        </div>
+      </div>
+      <div class="glass p-5 rounded-2xl flex items-center justify-between">
+        <div>
+          <h4 class="font-bold text-white text-sm">Live Interactive Web Dashboard Running</h4>
+          <p class="text-xs text-gray-400">Real-time Tailwind CSS glassmorphism dashboard with gauges, webcam feed, and live graphs.</p>
+        </div>
+        <a href="http://localhost:5000" target="_blank" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold font-mono">
+          Open http://localhost:5000 ↗
+        </a>
+      </div>
+    </div>
+    <div class="text-xs text-gray-500 border-t border-gray-800 pt-3">Section 6: Context-Aware Intelligence & Dashboard Integration</div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SLIDE 8: CONCLUSION & CONTRIBUTIONS        -->
+  <!-- ========================================== -->
+  <div class="slide pt-16">
+    <div class="max-w-5xl mx-auto my-auto w-full space-y-6 text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+        <i class="fa-solid fa-award"></i> Summary of Research Contributions
+      </div>
+      <h2 class="text-3xl md:text-4xl font-black text-white">Project Achievements & Impact</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-left">
+        <div class="glass p-4 rounded-xl">
+          <div class="text-2xl font-black text-emerald-400 font-mono">100.0%</div>
+          <div class="text-xs text-gray-300 font-bold mt-1">Diagnosis Accuracy</div>
+          <div class="text-[11px] text-gray-500">Outperforms soil-only baseline (88.4%)</div>
+        </div>
+        <div class="glass p-4 rounded-xl">
+          <div class="text-2xl font-black text-emerald-400 font-mono">0.82 ms</div>
+          <div class="text-xs text-gray-300 font-bold mt-1">Edge Inference</div>
+          <div class="text-[11px] text-gray-500">469x faster than cloud roundtrips</div>
+        </div>
+        <div class="glass p-4 rounded-xl">
+          <div class="text-2xl font-black text-emerald-400 font-mono">82.5%</div>
+          <div class="text-xs text-gray-300 font-bold mt-1">Bandwidth Saved</div>
+          <div class="text-[11px] text-gray-500">Through deadband delta filtering</div>
+        </div>
+        <div class="glass p-4 rounded-xl">
+          <div class="text-2xl font-black text-emerald-400 font-mono">Zero</div>
+          <div class="text-xs text-gray-300 font-bold mt-1">Pre-Rain Water Waste</div>
+          <div class="text-[11px] text-gray-500">Dynamically rain-gated actuation</div>
+        </div>
+      </div>
+      <div class="pt-6">
+        <h3 class="text-lg font-bold text-white mb-2">Thank You! Questions & Discussion</h3>
+        <p class="text-xs text-gray-400">All code, datasets, TinyML models, and dashboard source available in project workspace.</p>
+      </div>
+    </div>
+    <div class="text-xs text-gray-500 border-t border-gray-800 pt-3 flex justify-between">
+      <span>Problem Statement 10 Complete</span>
+      <span>IoT & Industrial IoT Course</span>
+    </div>
+  </div>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const indicator = document.getElementById('slide-indicator');
+
+    function showSlide(index) {
+      slides[currentSlide].classList.remove('active');
+      currentSlide = (index + slides.length) % slides.length;
+      slides[currentSlide].classList.add('active');
+      indicator.innerText = `Slide ${currentSlide + 1} of ${slides.length}`;
+    }
+
+    function nextSlide() { showSlide(currentSlide + 1); }
+    function prevSlide() { showSlide(currentSlide - 1); }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+      else if (e.key === 'ArrowLeft') prevSlide();
+    });
+  </script>
+</body>
+</html>
