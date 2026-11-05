@@ -176,8 +176,8 @@ def fetch_weather_data():
     Falls back gracefully if offline or rate-limited.
     """
     now = time.time()
-    # Cache for 10 minutes (600 seconds) if we already have a valid fetch
-    if state["weather"].get("cached_at", 0) > 0 and (now - state["weather"]["cached_at"] < 600):
+    # Cache for 10 minutes (600 seconds) if we already have a valid fetch with 5-day forecast
+    if state["weather"].get("cached_at", 0) > 0 and state["weather"].get("daily_forecast") and (now - state["weather"]["cached_at"] < 600):
         return state["weather"]
 
     try:
