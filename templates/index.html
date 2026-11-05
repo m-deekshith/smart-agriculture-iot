@@ -1042,6 +1042,9 @@
             term.innerHTML = '<div class="text-rose-400 font-bold">[OFFLINE] /dev/ttyUSB0 is closed. Connect ESP32 to stream live Modbus data.</div>';
           }
 
+          // Immediately reflect offline state in Crop Planner tab
+          updateCropPlanning();
+
           return; // Stop here: do not push null values to the hydrology chart
         }
 
@@ -1228,6 +1231,36 @@
 
         if (nameEl) nameEl.innerHTML = `<i class="fa-solid ${data.icon || 'fa-seedling'} text-amber-600"></i> ${data.crop} <span class="text-xs font-normal text-earth-600 font-mono">(${data.category})</span>`;
         if (descEl) descEl.innerText = data.description;
+
+        // If hardware is disconnected, render clean OFFLINE state with dashes
+        if (!data.hardware_connected) {
+          if (badgeEl) {
+            badgeEl.innerText = "SENSOR OFFLINE";
+            badgeEl.className = "px-3 py-1 rounded-full text-xs font-black bg-rose-600 text-white shadow-sm";
+          }
+          if (gridEl) {
+            gridEl.innerHTML = '';
+            data.params.forEach(p => {
+              gridEl.innerHTML += `
+                <div class="p-2.5 rounded-xl border border-earth-200 bg-earth-50/70 shadow-xs flex flex-col justify-between">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[10px] font-bold text-earth-600 uppercase tracking-tight">${p.name}</span>
+                    <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-md border bg-rose-100 text-rose-800 border-rose-200">OFFLINE</span>
+                  </div>
+                  <div class="flex items-baseline justify-between mt-1">
+                    <span class="text-sm font-black text-earth-400 font-mono">-- <span class="text-[10px] font-normal text-earth-400">${p.unit}</span></span>
+                    <span class="text-[10px] text-earth-400 font-mono font-medium">Target: ${p.min}-${p.max}</span>
+                  </div>
+                </div>
+              `;
+            });
+          }
+          if (remList) {
+            remList.innerHTML = `<li class="flex items-start gap-1.5 leading-snug text-rose-800 font-bold">• <span>⚠️ Field sensor is disconnected. Connect ESP32 soil probe in Field Block A-12 to measure real-time soil readiness for ${data.crop}.</span></li>`;
+          }
+          return;
+        }
+
         if (badgeEl) {
           badgeEl.innerText = `${data.readiness_pct}% Optimal (${data.optimal_count}/${data.total_params} In Range)`;
           badgeEl.className = data.readiness_pct >= 80 

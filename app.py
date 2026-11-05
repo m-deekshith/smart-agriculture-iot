@@ -749,13 +749,43 @@ def receive_edge_telemetry():
 @app.route("/api/crop_planning", methods=["GET"])
 def api_crop_planning():
     crop_name = request.args.get("crop", "Wheat")
-    # If hardware is disconnected, fallback to calibrated baseline soil
-    soil = state["soil"] if state["hardware_connected"] and state["soil"] else {
-        "moisture": 44.0, "temp": 28.0, "ec": 440.0, "ph": 6.7, "n": 50.0, "p": 40.0, "k": 53.0
-    }
+    if crop_name not in CROP_BENCHMARKS:
+        crop_name = "Wheat"
+    b = CROP_BENCHMARKS[crop_name]
+
+    # Hardware heartbeat check: active if telemetry received within last 65s
+    is_hw_active = bool(state["hardware_connected"] and (time.time() - state.get("last_serial_time", 0) < 65.0) and state.get("soil"))
+    state["hardware_connected"] = is_hw_active
+
+    if not is_hw_active:
+        return jsonify({
+            "hardware_connected": False,
+            "crop": crop_name,
+            "category": b["category"],
+            "icon": b["icon"],
+            "description": b["desc"],
+            "readiness_pct": None,
+            "optimal_count": 0,
+            "total_params": 7,
+            "params": [
+                {"name": "Soil Moisture", "unit": "%", "key": "moisture", "current": None, "min": b["min_m"], "max": b["max_m"], "target": b["target_m"], "status": "OFFLINE", "diff": None},
+                {"name": "Nitrogen (N)", "unit": "mg/kg", "key": "n", "current": None, "min": b["min_n"], "max": b["max_n"], "target": b["target_n"], "status": "OFFLINE", "diff": None},
+                {"name": "Phosphorus (P)", "unit": "mg/kg", "key": "p", "current": None, "min": b["min_p"], "max": b["max_p"], "target": b["target_p"], "status": "OFFLINE", "diff": None},
+                {"name": "Potassium (K)", "unit": "mg/kg", "key": "k", "current": None, "min": b["min_k"], "max": b["max_k"], "target": b["target_k"], "status": "OFFLINE", "diff": None},
+                {"name": "Soil pH", "unit": "pH", "key": "ph", "current": None, "min": b["min_ph"], "max": b["max_ph"], "target": b["target_ph"], "status": "OFFLINE", "diff": None},
+                {"name": "Salinity (EC)", "unit": "µS/cm", "key": "ec", "current": None, "min": b["min_ec"], "max": b["max_ec"], "target": b["target_ec"], "status": "OFFLINE", "diff": None},
+                {"name": "Soil Temp", "unit": "°C", "key": "temp", "current": None, "min": b["min_temp"], "max": b["max_temp"], "target": round((b["min_temp"]+b["max_temp"])/2.0, 1), "status": "OFFLINE", "diff": None}
+            ],
+            "remediations": [
+                f"⚠️ Field sensor is disconnected. Connect ESP32 soil probe in Field Block A-12 to evaluate real-time soil readiness for {crop_name}."
+            ],
+            "available_crops": list(CROP_BENCHMARKS.keys())
+        })
+
+    soil = state["soil"]
     analysis = analyze_crop_deficiencies(crop_name, soil)
     analysis["available_crops"] = list(CROP_BENCHMARKS.keys())
-    analysis["hardware_connected"] = bool(state["hardware_connected"])
+    analysis["hardware_connected"] = True
     return jsonify(analysis)
 
 @app.route("/api/export_csv", methods=["GET"])
