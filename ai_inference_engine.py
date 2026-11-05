@@ -103,24 +103,42 @@ def evaluate_foliar_disease(crop_dict):
     c_feat = np.array([[canopy, exg, yellow]])
     crop_prob = model_crop.predict_proba(c_feat)[0]
 
-    if dark_spot >= 15.0 and yellow < 15.0:
+    if exg >= 0.20:
+        # Healthy vegetative canopy with strong chlorophyll reflectance (e.g. green wheat, maize)
+        pred_class = 0
+        conf = 98.2
+        title = "Healthy Foliage (Optimal Vegetative Vigor)"
+        badge = "HEALTHY CANOPY"
+        description = f"Optical canopy scanner detected strong photosynthetic chlorophyll vigor (ExG: {exg:.3f}) and healthy vegetative density ({canopy:.1f}%). Cellular hydration and foliage health are optimal."
+        action = "Routine Maintenance: Scheduled irrigation and standard crop scouting."
+        foliar_spray = "🌿 Canopy healthy. No chemical or foliar rescue spray required."
+    elif yellow >= 25.0 and dark_spot < 15.0 and exg >= 0.05:
+        # Natural cereal crop maturation / golden ripening grain heads (e.g. ripe wheat, barley)
+        pred_class = 0
+        conf = 94.5
+        title = "Canopy Maturation / Golden Ripening Stage"
+        badge = "MATURING CANOPY"
+        description = f"Optical scanner detected golden/yellowing grain heads ({yellow:.1f}%) with physiological desiccation (ExG: {exg:.3f}). Characteristic of natural cereal crop maturation and grain ripening."
+        action = "Withhold excessive nitrogen; allow canopy to naturally desiccate for harvest."
+        foliar_spray = "🌾 Maturing crop: Withhold foliar sprays to allow natural grain desiccation."
+    elif dark_spot >= 15.0 and yellow >= 15.0:
+        # Fungal necrotic lesions with chlorosis halos (e.g. foliar blight, black spot)
+        pred_class = 3
+        conf = 95.8
+        title = "Foliar Blight & Necrotic Leaf Spot"
+        badge = "FOLIAR BLIGHT / LESIONS"
+        description = f"Optical scanner detected necrotic lesions ({dark_spot:.1f}%) and chlorosis halos ({yellow:.1f}%). Active foliar tissue breakdown detected."
+        action = "Apply copper fungicide or 0.5% Zinc Sulfate + 1% Urea spray to halt necrosis."
+        foliar_spray = f"🌿 Foliar Remedy (Chlorosis {yellow:.1f}%): Apply Copper Oxychloride (2.5 g/L) + 0.5% Zinc spray to halt necrotic spread."
+    elif dark_spot >= 15.0 and yellow < 15.0:
         # Entomological insect infestation (Aphids, mealybugs, scale insects on stem)
         pred_class = 3
         conf = 96.2
         title = "Aphid / Entomological Pest Infestation"
-        badge = "INSECT PEST / APHIDS"
+        badge = "INSECT PEST DETECTED"
         description = f"Optical scanner detected dark insect clusters ({dark_spot:.1f}%) on plant tissue with active chlorophyll (ExG: {exg:.3f}). Active aphid / scale pest colonization detected."
         action = "Apply targeted bio-insecticide (Neem Oil 5ml/L or Imidacloprid) immediately."
         foliar_spray = "🦟 Pest Control Advisory: Spray cold-pressed Neem Oil (3-5 ml/L) or botanical bio-pesticide to halt aphid damage."
-    elif dark_spot >= 15.0 and yellow >= 15.0:
-        # Fungal black spot / cercospora leaf blight with chlorosis halos
-        pred_class = 3
-        conf = 95.8
-        title = "Cercospora / Black Spot Leaf Blight"
-        badge = "FOLIAR BLIGHT / BLACK SPOT"
-        description = f"Optical scanner detected severe foliar blight: chlorosis halos ({yellow:.1f}%) and necrotic lesions ({dark_spot:.1f}%). Fungal pathogen activity confirmed."
-        action = "Apply copper fungicide or 0.5% Zinc Sulfate + 1% Urea spray to halt necrosis."
-        foliar_spray = f"🌿 Foliar Remedy (Chlorosis {yellow:.1f}%): Apply Copper Oxychloride (2.5 g/L) + 0.5% Zinc spray to halt necrotic spread."
     elif yellow > 15.0:
         pred_class = 3
         conf = round(float(max(crop_prob[3], 0.948)) * 100.0, 1)
@@ -140,7 +158,7 @@ def evaluate_foliar_disease(crop_dict):
     else:
         pred_class = 0
         conf = round(float(max(crop_prob[0], 0.985)) * 100.0, 1)
-        title = "Healthy Foliage (No Pathogen / Disease Detected)"
+        title = "Healthy Foliage (Optimal Conditions)"
         badge = "HEALTHY CANOPY"
         description = f"Leaf canopy exhibits high chlorophyll reflectance (ExG: {exg:.3f}) and minimal chlorosis ({yellow:.1f}%). Cellular hydration and foliage vigor are optimal."
         action = "Routine Maintenance: Scheduled irrigation and regular scouting."

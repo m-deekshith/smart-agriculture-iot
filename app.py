@@ -178,18 +178,23 @@ def analyze_crop_image(image_path):
     # Average ExG of the plant canopy
     mean_exg = float(np.mean(exg[plant_mask > 0])) if plant_pixels > 0 else 0.0
 
-    # Chlorosis (Yellowing) within plant foliage:
-    lower_yellow = np.array([14, 50, 50], dtype=np.uint8)
-    upper_yellow = np.array([36, 255, 255], dtype=np.uint8)
+    # Chlorosis (Yellowing) within plant foliage (Hue 18-31: true yellow/chlorotic tissue):
+    lower_yellow = np.array([18, 55, 55], dtype=np.uint8)
+    upper_yellow = np.array([31, 255, 255], dtype=np.uint8)
     yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
     yellow_plant = cv2.bitwise_and(yellow_mask, yellow_mask, mask=plant_mask)
     yellow_pixels = int(np.count_nonzero(yellow_plant))
     yellowing_pct = round((yellow_pixels / max(plant_pixels, 1)) * 100.0, 1)
 
-    # Dark necrotic lesions or insect pest clusters (gray < 75 on plant foliage):
-    dark_mask = ((gray < 75) & (plant_mask > 0)).astype(np.uint8)
-    dark_pixels = int(np.count_nonzero(dark_mask))
-    dark_spot_pct = round((dark_pixels / max(plant_pixels, 1)) * 100.0, 1)
+    # Dark necrotic lesions or insect clusters:
+    # In vigorous green crops (mean_exg >= 0.20), dark regions are natural canopy shadows.
+    # On low-vigor or chlorotic foliage (mean_exg < 0.20), dark regions indicate necrotic lesions or pest colonies.
+    if mean_exg >= 0.20:
+        dark_spot_pct = 0.0
+    else:
+        dark_mask = ((gray < 70) & (plant_mask > 0)).astype(np.uint8)
+        dark_pixels = int(np.count_nonzero(dark_mask))
+        dark_spot_pct = round((dark_pixels / max(plant_pixels, 1)) * 100.0, 1)
 
     return {
         "canopy_cover_pct": canopy_cover_pct,
