@@ -395,9 +395,8 @@ def serve_png(filename):
 def get_telemetry():
     weather = fetch_weather_data()
     
-    # Strict packet heartbeat check: hardware is only considered connected if
-    # a valid serial packet was parsed from the ESP32 within the last 3.5 seconds.
-    is_hw_active = bool(state["hardware_connected"] and (time.time() - state.get("last_serial_time", 0) < 3.5))
+    # Hardware heartbeat check: active if telemetry received within last 65s (accommodating deadband filter)
+    is_hw_active = bool(state["hardware_connected"] and (time.time() - state.get("last_serial_time", 0) < 65.0))
     state["hardware_connected"] = is_hw_active
 
     if not is_hw_active:
