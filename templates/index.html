@@ -370,23 +370,18 @@
               <i class="fa-solid fa-camera text-forest-700"></i>
               <h3 class="text-sm font-extrabold text-earth-950">Crop Foliage Scanner</h3>
             </div>
-            <div class="flex items-center gap-1.5">
-              <button onclick="setDemoFoliar(false)" title="Simulate healthy green leaf" class="text-[10px] font-bold bg-forest-50 hover:bg-forest-100 text-forest-800 border border-forest-200 px-2 py-1 rounded-lg transition">
-                🌱 Healthy
-              </button>
-              <button onclick="setDemoFoliar(true)" title="Simulate leaf chlorosis / early blight" class="text-[10px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 px-2 py-1 rounded-lg transition">
-                🍂 Chlorosis
-              </button>
-              <label class="cursor-pointer text-xs font-bold bg-forest-700 hover:bg-forest-800 text-white px-2.5 py-1 rounded-xl transition flex items-center gap-1 shadow-sm">
-                <i class="fa-solid fa-arrow-up-from-bracket text-[10px]"></i> Upload Leaf
-                <input type="file" id="crop-upload" class="hidden" accept="image/*" onchange="uploadCropPhoto(event)">
-              </label>
-            </div>
+            <label class="cursor-pointer text-xs font-bold bg-forest-700 hover:bg-forest-800 text-white px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+              <i class="fa-solid fa-arrow-up-from-bracket text-[11px]"></i> Upload Leaf Photo
+              <input type="file" id="crop-upload" class="hidden" accept="image/*" onchange="uploadCropPhoto(event)">
+            </label>
           </div>
 
           <!-- Leaf Preview Photo -->
           <div class="relative rounded-2xl overflow-hidden aspect-video bg-earth-100 border border-earth-200 shadow-inner group">
             <img id="crop-img" src="/static/latest_crop.jpg" alt="Crop Leaf Scan" class="w-full h-full object-cover">
+            <div id="crop-loading-overlay" class="hidden absolute inset-0 bg-earth-900/60 backdrop-blur-xs flex items-center justify-center text-white text-xs font-bold gap-2">
+              <i class="fa-solid fa-spinner animate-spin text-forest-400"></i> Analyzing Leaf Optics...
+            </div>
             <div class="absolute bottom-2 left-2 bg-white/90 backdrop-blur text-[10px] text-earth-900 font-bold px-2 py-0.5 rounded-md border border-earth-200">
               Optical Canopy ExG
             </div>
@@ -396,18 +391,22 @@
           </div>
 
           <!-- Optical Metrics Pill Grid -->
-          <div class="grid grid-cols-3 gap-2 text-center">
-            <div class="nature-subcard rounded-xl p-2.5">
-              <span class="text-[10px] text-earth-600 font-semibold block">Canopy Cover</span>
-              <span id="metric-canopy" class="text-base font-extrabold text-forest-700">--</span>
+          <div class="grid grid-cols-4 gap-2 text-center">
+            <div class="nature-subcard rounded-xl p-2">
+              <span class="text-[9px] text-earth-600 font-semibold block">Canopy</span>
+              <span id="metric-canopy" class="text-xs md:text-sm font-extrabold text-forest-700">--</span>
             </div>
-            <div class="nature-subcard rounded-xl p-2.5">
-              <span class="text-[10px] text-earth-600 font-semibold block">Foliar Vigor</span>
-              <span id="metric-exg" class="text-base font-extrabold text-sky-700">--</span>
+            <div class="nature-subcard rounded-xl p-2">
+              <span class="text-[9px] text-earth-600 font-semibold block">Vigor (ExG)</span>
+              <span id="metric-exg" class="text-xs md:text-sm font-extrabold text-sky-700">--</span>
             </div>
-            <div class="nature-subcard rounded-xl p-2.5">
-              <span class="text-[10px] text-earth-600 font-semibold block">Yellowing</span>
-              <span id="metric-yellow" class="text-base font-extrabold text-amber-700">--</span>
+            <div class="nature-subcard rounded-xl p-2">
+              <span class="text-[9px] text-earth-600 font-semibold block">Chlorosis</span>
+              <span id="metric-yellow" class="text-xs md:text-sm font-extrabold text-amber-700">--</span>
+            </div>
+            <div class="nature-subcard rounded-xl p-2">
+              <span class="text-[9px] text-earth-600 font-semibold block">Lesion/Pest</span>
+              <span id="metric-dark" class="text-xs md:text-sm font-extrabold text-rose-700">--</span>
             </div>
           </div>
 
@@ -520,6 +519,31 @@
           </div>
           <div id="serial-terminal" class="bg-earth-950 rounded-xl p-3 border border-earth-800 font-mono text-xs text-forest-400 overflow-x-auto max-h-36 leading-relaxed space-y-0.5">
             <div class="text-earth-500">// Connecting to ESP32 stream...</div>
+          </div>
+        </div>
+
+        <!-- Viva & Examination Scenario Simulation Presets -->
+        <div class="pt-3 border-t border-earth-200">
+          <div class="text-[11px] font-bold text-earth-800 mb-2 flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-flask text-forest-700"></i> Viva & Examination Scenario Simulation:</span>
+            <span class="text-[10px] text-earth-500 font-normal">Instant Preset Testing</span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button onclick="setScenario('normal')" class="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-forest-100 hover:bg-forest-200 text-forest-800 border border-forest-300 transition shadow-2xs">
+              🌱 Optimal Canopy (5% Chlorosis)
+            </button>
+            <button onclick="setScenario('foliar_stress')" class="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 transition shadow-2xs">
+              🍂 Leaf Black Spot / Blight (33% Yellow)
+            </button>
+            <button onclick="setScenario('aphids')" class="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 transition shadow-2xs">
+              🦟 Aphid / Pest Infestation (Stem Clusters)
+            </button>
+            <button onclick="setScenario('drought')" class="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-sky-100 hover:bg-sky-200 text-sky-900 border border-sky-300 transition shadow-2xs">
+              ☀️ Soil Drought Stress (Pump ON)
+            </button>
+            <button onclick="setScenario('rain_gated')" class="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-300 transition shadow-2xs">
+              🌧️ Rain-Gated Irrigation Hold
+            </button>
           </div>
         </div>
       </div>
@@ -647,16 +671,15 @@
       chevron.classList.toggle('rotate-180');
     }
 
-    // Quick Foliar Demo Toggle (Healthy vs Chlorosis)
-    async function setDemoFoliar(isDiseased) {
-      const scenario = isDiseased ? 'foliar_stress' : 'normal';
+    // Scenario Preset Switcher for Viva Demonstration
+    async function setScenario(scen) {
       try {
         await fetch('/api/set_scenario', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scenario: scenario })
+          body: JSON.stringify({ scenario: scen })
         });
-        updateTelemetry();
+        await updateTelemetry();
       } catch (e) {
         console.error(e);
       }
@@ -726,6 +749,9 @@
           document.getElementById('metric-exg').innerText = data.crop.exg.toFixed(3);
           const yPct = data.crop.yellowing_pct;
           document.getElementById('metric-yellow').innerText = yPct.toFixed(1) + '%';
+          const darkPct = (data.crop.dark_spot_pct !== undefined) ? data.crop.dark_spot_pct : 0.0;
+          const darkEl = document.getElementById('metric-dark');
+          if (darkEl) darkEl.innerText = darkPct.toFixed(1) + '%';
 
           const disBox = document.getElementById('crop-disease-box');
           const disBadge = document.getElementById('crop-disease-badge');
@@ -736,20 +762,30 @@
 
           let diag = (data.ai && data.ai.health_diagnosis) ? data.ai.health_diagnosis : null;
 
-          if (diag && (diag.class_id === 3 || diag.class_id === 2 || yPct > 15.0)) {
-            // Disease / Chlorosis Detected
-            const isBlight = (diag && diag.class_id === 3) || yPct > 20.0;
-            disBox.className = "nature-subcard rounded-xl p-3.5 border-l-4 border-l-rose-500 bg-rose-50/60 space-y-2 mt-3 shadow-sm border border-rose-200 transition-all";
-            disBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300";
-            disBadge.innerText = isBlight ? "FOLIAR BLIGHT / CHLOROSIS" : "NUTRIENT CHLOROSIS";
-            disHead.className = "text-xs font-extrabold text-rose-950";
-            disHead.innerText = diag ? diag.title : (isBlight ? "Foliar Chlorosis / Early Leaf Blight" : "Nitrogen / Macronutrient Deficiency Chlorosis");
-            disDesc.className = "text-[11px] text-rose-900 leading-snug font-medium";
-            disDesc.innerText = diag ? diag.description : `Optical scanner detected severe chlorosis (${yPct.toFixed(1)}%) and foliar stress. Risk of early blight or acute micronutrient deficiency.`;
-            disConf.innerText = (diag && diag.confidence_pct ? diag.confidence_pct : 94.8) + "%";
-            disConf.className = "text-rose-700 font-bold";
-            disAction.className = "font-bold text-rose-800 text-[10px]";
-            disAction.innerText = "Apply 0.5% Zinc Sulfate + 1% Urea Spray";
+          if (diag && (diag.class_id === 3 || diag.class_id === 2 || yPct > 15.0 || darkPct >= 15.0)) {
+            // Specific badge styling based on diagnosis
+            const isPest = diag.badge && diag.badge.includes("PEST");
+            const isBlackSpot = diag.badge && diag.badge.includes("BLACK SPOT");
+
+            disBox.className = "nature-subcard rounded-xl p-3.5 border-l-4 " + 
+              (isPest ? "border-l-purple-600 bg-purple-50/50 border border-purple-200" : "border-l-rose-500 bg-rose-50/60 border border-rose-200") +
+              " space-y-2 mt-3 shadow-sm transition-all";
+
+            disBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full " +
+              (isPest ? "bg-purple-100 text-purple-900 border border-purple-300" : "bg-rose-100 text-rose-800 border border-rose-300");
+            disBadge.innerText = diag.badge || "FOLIAR STRESS";
+
+            disHead.className = "text-xs font-extrabold " + (isPest ? "text-purple-950" : "text-rose-950");
+            disHead.innerText = diag.title || "Foliar Stress Detected";
+
+            disDesc.className = "text-[11px] " + (isPest ? "text-purple-900" : "text-rose-900") + " leading-snug font-medium";
+            disDesc.innerText = diag.description;
+
+            disConf.innerText = (diag.confidence_pct ? diag.confidence_pct : 94.8) + "%";
+            disConf.className = (isPest ? "text-purple-700" : "text-rose-700") + " font-bold";
+
+            disAction.className = "font-bold " + (isPest ? "text-purple-800" : "text-rose-800") + " text-[10px]";
+            disAction.innerText = diag.action || "Apply prescribed foliar treatment.";
           } else {
             // Optimal Healthy Foliage
             disBox.className = "nature-subcard rounded-xl p-3.5 border-l-4 border-l-forest-600 space-y-2 mt-3 shadow-sm bg-forest-50/20 transition-all";
@@ -1000,23 +1036,53 @@
       }
     }
 
-    // Photo Upload Handler
+    // Photo Upload Handler with Client-Side Instant Compression
     async function uploadCropPhoto(event) {
       const file = event.target.files[0];
       if (!file) return;
-      const formData = new FormData();
-      formData.append('image', file);
 
-      try {
-        const res = await fetch('/api/upload_crop_image', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.status === 'ok') {
-          document.getElementById('crop-img').src = '/static/latest_crop.jpg?t=' + new Date().getTime();
-          updateTelemetry();
-        }
-      } catch (e) {
-        alert("Upload error: " + e);
-      }
+      const overlay = document.getElementById('crop-loading-overlay');
+      if (overlay) overlay.classList.remove('hidden');
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const maxDim = 800;
+          let w = img.width, h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+            else { w = Math.round((w * maxDim) / h); h = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+
+          // Update image preview immediately
+          document.getElementById('crop-img').src = canvas.toDataURL('image/jpeg', 0.85);
+
+          canvas.toBlob(async function(blob) {
+            const formData = new FormData();
+            formData.append('image', blob, 'leaf.jpg');
+
+            try {
+              const res = await fetch('/api/upload_crop_image', { method: 'POST', body: formData });
+              const data = await res.json();
+              if (overlay) overlay.classList.add('hidden');
+              if (data.status === 'ok') {
+                await updateTelemetry();
+              }
+            } catch (err) {
+              if (overlay) overlay.classList.add('hidden');
+              alert("Upload error: " + err);
+            }
+          }, 'image/jpeg', 0.85);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
     }
 
     // Camera Trigger

@@ -165,32 +165,37 @@ def analyze_crop_image(image_path):
     # Excess Green Index (ExG = 2*g - r - b)
     exg = (2.0 * gn) - rn - bn
 
-    # Canopy mask: active green foliage where ExG > 0.08
-    canopy_mask = (exg > 0.08).astype(np.uint8)
-    canopy_pixels = int(np.count_nonzero(canopy_mask))
-    total_pixels = img.shape[0] * img.shape[1]
-    canopy_cover_pct = round((canopy_pixels / total_pixels) * 100.0, 1)
-
-    # Average ExG of the foliage
-    mean_exg = float(np.mean(exg[canopy_mask > 0])) if canopy_pixels > 0 else 0.0
-
-    # Chlorosis / Yellowing detection within canopy:
-    # Yellow foliage typically has high red and green, low blue
+    # HSV & Grayscale representation
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    # Yellow hue range: 20 to 35 in OpenCV (0-180 scale)
-    lower_yellow = np.array([15, 60, 60], dtype=np.uint8)
-    upper_yellow = np.array([35, 255, 255], dtype=np.uint8)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Plant foliage mask (green leaves, chlorotic yellow foliage, and green stems)
+    plant_mask = (((hsv[:, :, 1] > 25) & (hsv[:, :, 2] > 30)) | (exg > 0.02)).astype(np.uint8)
+    plant_pixels = int(np.count_nonzero(plant_mask))
+    total_pixels = img.shape[0] * img.shape[1]
+    canopy_cover_pct = round((plant_pixels / total_pixels) * 100.0, 1)
+
+    # Average ExG of the plant canopy
+    mean_exg = float(np.mean(exg[plant_mask > 0])) if plant_pixels > 0 else 0.0
+
+    # Chlorosis (Yellowing) within plant foliage:
+    lower_yellow = np.array([14, 50, 50], dtype=np.uint8)
+    upper_yellow = np.array([36, 255, 255], dtype=np.uint8)
     yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
-    
-    # Intersect with canopy mask
-    yellow_canopy = cv2.bitwise_and(yellow_mask, yellow_mask, mask=canopy_mask)
-    yellow_pixels = int(np.count_nonzero(yellow_canopy))
-    yellowing_pct = round((yellow_pixels / max(canopy_pixels, 1)) * 100.0, 1)
+    yellow_plant = cv2.bitwise_and(yellow_mask, yellow_mask, mask=plant_mask)
+    yellow_pixels = int(np.count_nonzero(yellow_plant))
+    yellowing_pct = round((yellow_pixels / max(plant_pixels, 1)) * 100.0, 1)
+
+    # Dark necrotic lesions or insect pest clusters (gray < 75 on plant foliage):
+    dark_mask = ((gray < 75) & (plant_mask > 0)).astype(np.uint8)
+    dark_pixels = int(np.count_nonzero(dark_mask))
+    dark_spot_pct = round((dark_pixels / max(plant_pixels, 1)) * 100.0, 1)
 
     return {
         "canopy_cover_pct": canopy_cover_pct,
         "exg": round(mean_exg, 3),
-        "yellowing_pct": yellowing_pct
+        "yellowing_pct": yellowing_pct,
+        "dark_spot_pct": dark_spot_pct
     }
 
 # -------------------------------------------------------------
@@ -540,11 +545,8 @@ def get_telemetry():
     if not is_hw_active:
         foliar_diag = evaluate_foliar_disease(state["crop"])
         y_pct = float(state["crop"].get("yellowing_pct", 0.0))
-        foliar_spray = (
-            f"🌿 Foliar Remedy (Chlorosis {y_pct:.1f}%): Apply 0.5% Zinc Sulfate + 1.0% Urea spray (250 L/ha) to halt yellowing necrosis."
-            if y_pct > 15.0 else
-            "🌿 Canopy healthy. No emergency foliar spray required."
-        )
+        d_pct = float(state["crop"].get("dark_spot_pct", 0.0))
+        foliar_spray = foliar_diag.get("foliar_spray", "🌿 Canopy healthy. No emergency foliar spray required.")
         return jsonify({
             "hardware_connected": False,
             "soil": None,
@@ -555,7 +557,7 @@ def get_telemetry():
                 "fertilizer_advisory": {
                     "fertilizers": [],
                     "foliar_spray": foliar_spray,
-                    "has_foliar_alert": bool(y_pct > 15.0),
+                    "has_foliar_alert": bool(y_pct > 15.0 or d_pct >= 15.0),
                     "timing_status": "SOIL_SENSOR_OFFLINE",
                     "timing_message": "Soil probe offline. Non-contact optical foliar diagnosis active."
                 },
@@ -658,26 +660,30 @@ def set_scenario():
 
     if scenario == "normal":
         state["soil"] = {"moisture": 45.0, "temp": 26.0, "ec": 450, "ph": 6.8, "n": 52, "p": 42, "k": 55}
-        state["crop"] = {"canopy_cover_pct": 62.0, "exg": 0.155, "yellowing_pct": 3.5}
+        state["crop"] = {"canopy_cover_pct": 62.0, "exg": 0.155, "yellowing_pct": 3.5, "dark_spot_pct": 1.5}
         state["weather"]["rain_prob_next_4h"] = 10.0
     elif scenario == "drought":
         state["soil"] = {"moisture": 18.2, "temp": 34.5, "ec": 380, "ph": 6.9, "n": 48, "p": 39, "k": 50}
-        state["crop"] = {"canopy_cover_pct": 42.0, "exg": 0.095, "yellowing_pct": 14.2}
+        state["crop"] = {"canopy_cover_pct": 42.0, "exg": 0.095, "yellowing_pct": 14.2, "dark_spot_pct": 3.0}
         state["weather"]["rain_prob_next_4h"] = 5.0
     elif scenario == "rain_gated":
         state["soil"] = {"moisture": 19.0, "temp": 30.2, "ec": 410, "ph": 6.8, "n": 45, "p": 40, "k": 52}
-        state["crop"] = {"canopy_cover_pct": 50.0, "exg": 0.110, "yellowing_pct": 9.0}
+        state["crop"] = {"canopy_cover_pct": 50.0, "exg": 0.110, "yellowing_pct": 9.0, "dark_spot_pct": 2.0}
         state["weather"]["rain_prob_next_4h"] = 85.0
         state["weather"]["rain_mm"] = 12.5
         state["weather"]["condition"] = "Rain Showers"
         state["weather"]["icon"] = "fa-cloud-showers-heavy text-sky-600"
     elif scenario == "nutrient_deficiency":
         state["soil"] = {"moisture": 42.0, "temp": 25.5, "ec": 210, "ph": 6.5, "n": 18, "p": 12, "k": 22}
-        state["crop"] = {"canopy_cover_pct": 35.0, "exg": 0.075, "yellowing_pct": 38.5}
+        state["crop"] = {"canopy_cover_pct": 35.0, "exg": 0.075, "yellowing_pct": 35.0, "dark_spot_pct": 4.0}
         state["weather"]["rain_prob_next_4h"] = 15.0
     elif scenario == "foliar_stress":
         state["soil"] = {"moisture": 44.0, "temp": 28.0, "ec": 440, "ph": 6.7, "n": 50, "p": 40, "k": 53}
-        state["crop"] = {"canopy_cover_pct": 45.0, "exg": 0.060, "yellowing_pct": 38.5}
+        state["crop"] = {"canopy_cover_pct": 64.4, "exg": 0.174, "yellowing_pct": 33.2, "dark_spot_pct": 19.2}
+        state["weather"]["rain_prob_next_4h"] = 10.0
+    elif scenario == "aphids":
+        state["soil"] = {"moisture": 45.0, "temp": 27.0, "ec": 460, "ph": 6.8, "n": 50, "p": 42, "k": 54}
+        state["crop"] = {"canopy_cover_pct": 52.3, "exg": 0.181, "yellowing_pct": 8.0, "dark_spot_pct": 25.5}
         state["weather"]["rain_prob_next_4h"] = 10.0
 
     state["hardware_connected"] = True
