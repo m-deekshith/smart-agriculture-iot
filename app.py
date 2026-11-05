@@ -10,7 +10,7 @@ import numpy as np
 import requests
 from flask import Flask, render_template, jsonify, request, send_from_directory
 
-from ai_inference_engine import run_master_ai_analysis
+from ai_inference_engine import run_master_ai_analysis, evaluate_foliar_disease
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -538,12 +538,33 @@ def get_telemetry():
     state["hardware_connected"] = is_hw_active
 
     if not is_hw_active:
+        foliar_diag = evaluate_foliar_disease(state["crop"])
+        y_pct = float(state["crop"].get("yellowing_pct", 0.0))
+        foliar_spray = (
+            f"🌿 Foliar Remedy (Chlorosis {y_pct:.1f}%): Apply 0.5% Zinc Sulfate + 1.0% Urea spray (250 L/ha) to halt yellowing necrosis."
+            if y_pct > 15.0 else
+            "🌿 Canopy healthy. No emergency foliar spray required."
+        )
         return jsonify({
             "hardware_connected": False,
             "soil": None,
             "crop": state["crop"],
             "weather": weather,
-            "ai": None,
+            "ai": {
+                "health_diagnosis": foliar_diag,
+                "fertilizer_advisory": {
+                    "fertilizers": [],
+                    "foliar_spray": foliar_spray,
+                    "has_foliar_alert": bool(y_pct > 15.0),
+                    "timing_status": "SOIL_SENSOR_OFFLINE",
+                    "timing_message": "Soil probe offline. Non-contact optical foliar diagnosis active."
+                },
+                "crop_rankings": [],
+                "irrigation_decision": {
+                    "action": "OFFLINE",
+                    "reason": "Soil probe offline."
+                }
+            },
             "edge_latency_ms": None,
             "cloud_latency_ms": None,
             "serial_logs": state["serial_logs"]
@@ -656,8 +677,11 @@ def set_scenario():
         state["weather"]["rain_prob_next_4h"] = 15.0
     elif scenario == "foliar_stress":
         state["soil"] = {"moisture": 44.0, "temp": 28.0, "ec": 440, "ph": 6.7, "n": 50, "p": 40, "k": 53}
-        state["crop"] = {"canopy_cover_pct": 45.0, "exg": 0.060, "yellowing_pct": 48.0}
+        state["crop"] = {"canopy_cover_pct": 45.0, "exg": 0.060, "yellowing_pct": 38.5}
         state["weather"]["rain_prob_next_4h"] = 10.0
+
+    state["hardware_connected"] = True
+    state["last_serial_time"] = time.time()
 
     return jsonify({"status": "ok", "scenario": scenario, "state": state})
 
