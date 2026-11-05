@@ -10,7 +10,7 @@ import os
 import joblib
 import numpy as np
 
-BASE_DIR = "/home/deek/Projects/smart_agriculture"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Load trained models
 model_soil   = joblib.load(f"{BASE_DIR}/model_soil.joblib")
