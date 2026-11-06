@@ -336,7 +336,8 @@ def fetch_weather_data():
             }
             print(f"[WEATHER] Live update: {temp_c}°C, {condition}, {humidity}% humidity")
         else:
-            print(f"[WEATHER API] Non-200 status: {res.status_code}")
+            print(f"[WEATHER API] Non-200 status: {res.status_code} - {res.text[:200]}")
+            state["weather"]["error"] = f"HTTP {res.status_code}: {res.text[:200]}"
             if not state["weather"].get("daily_forecast"):
                 state["weather"]["daily_forecast"] = generate_fallback_5day()
             state["weather"]["cached_at"] = now
@@ -568,6 +569,43 @@ def get_version():
         "daily_count": len(state["weather"].get("daily_forecast", [])),
         "weather": state["weather"]
     })
+
+@app.route("/api/weather_debug")
+def weather_debug():
+    """Diagnostic: test Open-Meteo API directly and return results."""
+    import traceback
+    result = {"timestamp": time.time()}
+    try:
+        url = (
+            "https://api.open-meteo.com/v1/forecast"
+            "?latitude=15.45&longitude=75.0"
+            "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day"
+            "&timezone=auto"
+        )
+        headers = {
+            "User-Agent": "VerdantFarm-SmartAgri/1.0 (academic-iot-research-project; Dharwad Field Station)"
+        }
+        res = requests.get(url, headers=headers, timeout=10)
+        result["status_code"] = res.status_code
+        result["response_headers"] = dict(res.headers)
+        if res.status_code == 200:
+            result["data"] = res.json().get("current", {})
+            result["ok"] = True
+        else:
+            result["body"] = res.text[:500]
+            result["ok"] = False
+    except Exception as e:
+        result["error"] = str(e)
+        result["traceback"] = traceback.format_exc()
+        result["ok"] = False
+    result["cached_weather"] = {
+        "temp": state["weather"].get("temp"),
+        "condition": state["weather"].get("condition"),
+        "live_fetch": state["weather"].get("live_fetch"),
+        "error": state["weather"].get("error"),
+        "cached_at": state["weather"].get("cached_at")
+    }
+    return jsonify(result)
 
 @app.route("/api/telemetry")
 def get_telemetry():
