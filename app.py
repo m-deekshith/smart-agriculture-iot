@@ -218,8 +218,11 @@ def fetch_weather_data():
     Falls back gracefully if offline or rate-limited.
     """
     now = time.time()
-    # Cache for 10 minutes (600 seconds) if we already have a valid fetch with 5-day forecast
-    if state["weather"].get("cached_at", 0) > 0 and state["weather"].get("daily_forecast") and (now - state["weather"]["cached_at"] < 600):
+    # Cache for 10 minutes (600 seconds) only if we have a SUCCESSFUL live fetch
+    # (identified by "live_fetch" flag); failed/fallback data uses a shorter 60s retry
+    has_live = state["weather"].get("live_fetch", False)
+    cache_ttl = 600 if has_live else 60
+    if state["weather"].get("cached_at", 0) > 0 and state["weather"].get("daily_forecast") and (now - state["weather"]["cached_at"] < cache_ttl):
         return state["weather"]
 
     try:
@@ -235,7 +238,7 @@ def fetch_weather_data():
         headers = {
             "User-Agent": "VerdantFarm-SmartAgri/1.0 (academic-iot-research-project; Dharwad Field Station)"
         }
-        res = requests.get(url, headers=headers, timeout=5)
+        res = requests.get(url, headers=headers, timeout=10)
         if res.status_code == 200:
             data = res.json()
             cur = data.get("current", {})
@@ -328,18 +331,23 @@ def fetch_weather_data():
                 "rain_prob_24h": round(next_24h_prob, 1),
                 "rain_mm": round(rain_mm, 1),
                 "daily_forecast": daily_forecast,
-                "cached_at": now
+                "cached_at": now,
+                "live_fetch": True
             }
+            print(f"[WEATHER] Live update: {temp_c}°C, {condition}, {humidity}% humidity")
         else:
+            print(f"[WEATHER API] Non-200 status: {res.status_code}")
             if not state["weather"].get("daily_forecast"):
                 state["weather"]["daily_forecast"] = generate_fallback_5day()
             state["weather"]["cached_at"] = now
+            state["weather"]["live_fetch"] = False
     except Exception as e:
         print(f"[WEATHER API ERROR] {e}")
         state["weather"]["error"] = str(e)
         if not state["weather"].get("daily_forecast"):
             state["weather"]["daily_forecast"] = generate_fallback_5day()
         state["weather"]["cached_at"] = now
+        state["weather"]["live_fetch"] = False
 
     return state["weather"]
 
