@@ -5,6 +5,9 @@ import json
 import threading
 import random
 import sqlite3
+import tempfile
+import fcntl
+from email.utils import parsedate_to_datetime
 import cv2
 import numpy as np
 import requests
@@ -81,11 +84,11 @@ def generate_fallback_5day():
     days = []
     base_date = datetime.datetime.now()
     weather_pattern = [
-        ("Drizzle", "fa-cloud-rain text-sky-500", 30.7, 21.9, 84, 1.4),
-        ("Drizzle", "fa-cloud-rain text-sky-500", 30.2, 20.9, 60, 2.4),
-        ("Light Rain", "fa-cloud-rain text-sky-500", 30.4, 20.8, 22, 0.6),
-        ("Partly Cloudy", "fa-cloud-sun text-amber-500", 30.8, 20.6, 18, 0.0),
-        ("Clear Sky", "fa-sun text-amber-500", 30.4, 19.8, 9, 0.0)
+        ("Drizzle", "fa-cloud-rain text-sky-500", 30.7, 21.9, 1.4),
+        ("Drizzle", "fa-cloud-rain text-sky-500", 30.2, 20.9, 2.4),
+        ("Light Rain", "fa-cloud-rain text-sky-500", 30.4, 20.8, 0.6),
+        ("Partly Cloudy", "fa-cloud-sun text-amber-500", 30.8, 20.6, 0.0),
+        ("Clear Sky", "fa-sun text-amber-500", 30.4, 19.8, 0.0)
     ]
     for i in range(1, 6):
         d = base_date + datetime.timedelta(days=i)
@@ -98,8 +101,7 @@ def generate_fallback_5day():
             "icon": p[1],
             "temp_max": p[2],
             "temp_min": p[3],
-            "rain_prob": p[4],
-            "rain_mm": p[5]
+            "rain_mm": p[4]
         })
     return days
 
@@ -127,11 +129,14 @@ state = {
         "temp": 24.9,
         "humidity": 65,
         "wind_kmh": 10.8,
-        "rain_prob_next_4h": 0.0,
-        "rain_prob_24h": 0.0,
+        "rain_mm_next_4h": 0.0,
+        "rain_mm_next_24h": 0.0,
         "rain_mm": 0.0,
         "daily_forecast": generate_fallback_5day(),
-        "cached_at": 0
+        "cached_at": 0,
+        "provider": "Fallback estimate",
+        "live_fetch": False,
+        "stale": True
     },
     "hardware_connected": False,
     "last_serial_time": 0,
@@ -209,154 +214,219 @@ def analyze_crop_image(image_path):
     }
 
 # -------------------------------------------------------------
-# 2. Open-Meteo Weather Service
+# 2. Cached weather service (MET Norway)
 # -------------------------------------------------------------
+WEATHER_CACHE_FILE = os.path.join(BASE_DIR, "weather_cache.json")
+WEATHER_LOCK_FILE = WEATHER_CACHE_FILE + ".lock"
+WEATHER_MIN_REFRESH_SECONDS = 6 * 60 * 60
+
+def parse_met_symbol(symbol_code):
+    if not symbol_code:
+        return "Fair", "fa-cloud-sun text-amber-500"
+    base = symbol_code.lower()
+    is_night = "_night" in base
+    base = base.replace("_day", "").replace("_night", "").replace("_polartwilight", "")
+    mapping = {
+        "clearsky": ("Clear Sky" if not is_night else "Clear Night", "fa-sun text-amber-500" if not is_night else "fa-moon text-sky-400"),
+        "fair": ("Fair", "fa-cloud-sun text-amber-500" if not is_night else "fa-cloud-moon text-slate-400"),
+        "partlycloudy": ("Partly Cloudy", "fa-cloud-sun text-amber-500" if not is_night else "fa-cloud-moon text-slate-400"),
+        "cloudy": ("Overcast", "fa-cloud text-slate-500"),
+        "fog": ("Foggy", "fa-smog text-slate-400"),
+        "lightrainshowers": ("Light Showers", "fa-cloud-sun-rain text-sky-400" if not is_night else "fa-cloud-moon-rain text-sky-400"),
+        "rainshowers": ("Rain Showers", "fa-cloud-sun-rain text-sky-500" if not is_night else "fa-cloud-moon-rain text-sky-500"),
+        "heavyrainshowers": ("Heavy Showers", "fa-cloud-showers-heavy text-sky-600"),
+        "lightrain": ("Light Rain", "fa-cloud-rain text-sky-500"),
+        "rain": ("Rain", "fa-cloud-rain text-sky-600"),
+        "heavyrain": ("Heavy Rain", "fa-cloud-showers-heavy text-sky-600"),
+        "lightrainandthunder": ("Thunder Drizzle", "fa-cloud-bolt text-amber-600"),
+        "rainandthunder": ("Thunderstorm", "fa-bolt text-amber-600"),
+        "heavyrainandthunder": ("Heavy Thunderstorm", "fa-bolt text-amber-600"),
+    }
+    return mapping.get(base, ("Fair", "fa-cloud-sun text-amber-500"))
+
+def _fetch_from_met_no(cached=None):
+    """Fetch MET Norway data, conditionally when its Last-Modified value is known."""
+    from collections import defaultdict
+    url = "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=15.45&lon=75.00"
+    headers = {"User-Agent": "VerdantFarm/1.0 (+https://smart-agriculture-iot-o3ni.onrender.com)"}
+    if cached and cached.get("last_modified"):
+        headers["If-Modified-Since"] = cached["last_modified"]
+    res = requests.get(url, headers=headers, timeout=12)
+    if res.status_code == 304 and cached and cached.get("weather"):
+        return cached["weather"], res.headers, True
+    if res.status_code != 200:
+        raise RuntimeError(f"MET Norway returned HTTP {res.status_code}")
+    data = res.json()
+    ts = data.get("properties", {}).get("timeseries", [])
+    if not ts:
+        raise ValueError("MET Norway returned empty timeseries")
+
+    cur_entry = ts[0]
+    inst = cur_entry.get("data", {}).get("instant", {}).get("details", {})
+    temp_c = round(float(inst.get("air_temperature", 25.0)), 1)
+    humidity = int(inst.get("relative_humidity", 60))
+    wind_kmh = round(float(inst.get("wind_speed", 3.0)) * 3.6, 1)
+
+    cur_sym = cur_entry.get("data", {}).get("next_1_hours", {}).get("summary", {}).get("symbol_code") or \
+              cur_entry.get("data", {}).get("next_6_hours", {}).get("summary", {}).get("symbol_code", "fair_day")
+    condition, icon = parse_met_symbol(cur_sym)
+    is_day = "_night" not in cur_sym
+
+    # MET Norway does not provide precipitation probability for Dharwad.
+    # Report forecast amounts in mm rather than inventing a percentage.
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    next_4h_rains = []
+    next_24h_rains = []
+    for entry in ts:
+        try:
+            entry_time = datetime.datetime.fromisoformat(entry["time"].replace("Z", "+00:00"))
+        except (KeyError, ValueError):
+            continue
+        delta_hours = (entry_time - now_utc).total_seconds() / 3600
+        data_periods = entry.get("data", {})
+        amount = None
+        for period in ("next_1_hours", "next_6_hours", "next_12_hours"):
+            details = data_periods.get(period, {}).get("details", {})
+            if "precipitation_amount" in details:
+                amount = float(details["precipitation_amount"])
+                break
+        if amount is not None and -1 <= delta_hours < 4:
+            next_4h_rains.append(amount)
+        if amount is not None and -1 <= delta_hours < 24:
+            next_24h_rains.append(amount)
+    rain_mm_4h = round(sum(next_4h_rains), 1)
+    rain_mm_24h = round(sum(next_24h_rains), 1)
+
+    # Next 5-Day Agricultural Forecast Aggregation
+    days_data = defaultdict(lambda: {"temps": [], "precip": 0.0, "symbols": []})
+    for entry in ts:
+        dt_str = entry["time"][:10]
+        t = entry.get("data", {}).get("instant", {}).get("details", {}).get("air_temperature")
+        if t is not None:
+            days_data[dt_str]["temps"].append(t)
+        for k in ["next_1_hours", "next_6_hours", "next_12_hours"]:
+            period_data = entry.get("data", {}).get(k)
+            if period_data:
+                p = period_data.get("details", {}).get("precipitation_amount")
+                if p is not None:
+                    days_data[dt_str]["precip"] += float(p)
+                s = period_data.get("summary", {}).get("symbol_code")
+                if s:
+                    days_data[dt_str]["symbols"].append(s)
+                break
+
+    today_local = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    forecast_5day = []
+    for d_str in sorted(days_data.keys()):
+        if d_str <= today_local:
+            continue
+        info = days_data[d_str]
+        if not info["temps"]:
+            continue
+        dt = datetime.datetime.strptime(d_str, "%Y-%m-%d")
+        syms = [s for s in info["symbols"] if "_night" not in s]
+        rep_sym = syms[len(syms)//2] if syms else (info["symbols"][0] if info["symbols"] else "fair_day")
+        c_text, c_icon = parse_met_symbol(rep_sym)
+        rain_mm = round(info["precip"], 1)
+        forecast_5day.append({
+            "date": d_str,
+            "day_name": dt.strftime("%a"),
+            "day_date": dt.strftime("%b %d"),
+            "temp_max": round(max(info["temps"]), 1),
+            "temp_min": round(min(info["temps"]), 1),
+            "condition": c_text,
+            "icon": c_icon,
+            "rain_mm": rain_mm
+        })
+        if len(forecast_5day) == 5:
+            break
+
+    return {
+        "location": "Dharwad, Karnataka",
+        "condition": condition,
+        "icon": icon,
+        "is_day": is_day,
+        "temp": temp_c,
+        "humidity": humidity,
+        "wind_kmh": wind_kmh,
+        "rain_mm_next_4h": rain_mm_4h,
+        "rain_mm_next_24h": rain_mm_24h,
+        "rain_mm": rain_mm_4h,
+        "daily_forecast": forecast_5day or generate_fallback_5day(),
+        "cached_at": time.time(),
+        "live_fetch": True,
+        "provider": "MET Norway",
+        "provider_url": "api.met.no"
+    }, res.headers, False
+
 def fetch_weather_data():
-    """
-    Fetches real hyper-local forecast from Open-Meteo API for Dharwad, Karnataka.
-    Includes current conditions, next 4h rainfall, and 5-day daily agricultural forecast.
-    Falls back gracefully if offline or rate-limited.
-    """
+    """Use a cross-worker cache and a six-hour request floor for MET Norway."""
     now = time.time()
-    # Cache for 15 minutes (900 seconds) on successful live fetch;
-    # retry after 120s on failure (avoid burning Open-Meteo's 10k/day free limit)
-    has_live = state["weather"].get("live_fetch", False)
-    cache_ttl = 900 if has_live else 120
-    if state["weather"].get("cached_at", 0) > 0 and state["weather"].get("daily_forecast") and (now - state["weather"]["cached_at"] < cache_ttl):
+    if now < state["weather"].get("refresh_after", 0):
         return state["weather"]
+    with open(WEATHER_LOCK_FILE, "a+") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        disk_cache = {}
+        try:
+            with open(WEATHER_CACHE_FILE, "r") as cache_file:
+                disk_cache = json.load(cache_file)
+        except (OSError, ValueError):
+            pass
+        if disk_cache.get("weather") and now < disk_cache.get("refresh_after", 0):
+            state["weather"].update(disk_cache["weather"])
+            state["weather"]["refresh_after"] = disk_cache["refresh_after"]
+            return state["weather"]
 
-    try:
-        # Hyper-local coordinates: Dharwad Field Station, Karnataka (15.45 N, 75.0 E)
-        url = (
-            "https://api.open-meteo.com/v1/forecast"
-            "?latitude=15.45&longitude=75.0"
-            "&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,is_day"
-            "&hourly=temperature_2m,precipitation_probability,precipitation,weather_code"
-            "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max"
-            "&timezone=auto&forecast_days=6"
-        )
-        headers = {
-            "User-Agent": "VerdantFarm-SmartAgri/1.0 (academic-iot-research-project; Dharwad Field Station)"
-        }
-        res = requests.get(url, headers=headers, timeout=10)
-        if res.status_code == 200:
-            data = res.json()
-            cur = data.get("current", {})
-            cur_time = cur.get("time")
-            hourly = data.get("hourly", {})
-            times = hourly.get("time", [])
-            probs = hourly.get("precipitation_probability", [])
-            rains = hourly.get("precipitation", [])
-
-            # Dynamic hour index matching current time
-            idx = times.index(cur_time) if cur_time in times else 0
-            next_4h_probs = probs[idx:idx+4] if len(probs) >= idx+4 else probs[idx:]
-            next_24h_probs = probs[idx:idx+24] if len(probs) >= idx+24 else probs[idx:]
-            next_4h_rains = rains[idx:idx+4] if len(rains) >= idx+4 else rains[idx:]
-
-            next_4h_prob = float(max(next_4h_probs)) if next_4h_probs else 0.0
-            next_24h_prob = float(max(next_24h_probs)) if next_24h_probs else 0.0
-            rain_mm = float(sum(next_4h_rains)) if next_4h_rains else 0.0
-
-            wmo_code = cur.get("weather_code", 0)
-            is_day = bool(cur.get("is_day", 1))
-
-            def parse_wmo(code, day=True):
-                if code == 0:
-                    return ("Clear Sky" if day else "Clear Night"), ("fa-sun text-amber-500" if day else "fa-moon text-sky-400")
-                elif code in [1, 2]:
-                    return "Partly Cloudy", ("fa-cloud-sun text-amber-500" if day else "fa-cloud-moon text-slate-400")
-                elif code == 3:
-                    return "Overcast", "fa-cloud text-slate-500"
-                elif code in [45, 48]:
-                    return "Foggy", "fa-smog text-slate-400"
-                elif code in [51, 53, 55]:
-                    return "Drizzle", "fa-cloud-rain text-sky-500"
-                elif code in [61, 63, 65, 80, 81, 82]:
-                    return "Rain Showers", "fa-cloud-showers-heavy text-sky-600"
-                elif code in [95, 96, 99]:
-                    return "Thunderstorm", "fa-bolt text-amber-600"
-                return "Fair", "fa-cloud-sun text-amber-500"
-
-            condition, icon = parse_wmo(wmo_code, is_day)
-            temp_c = round(float(cur.get("temperature_2m", 25.0)), 1)
-            humidity = int(cur.get("relative_humidity_2m", 60))
-            wind_kmh = round(float(cur.get("wind_speed_10m", 10.0)), 1)
-
-            # Parse Next 5 Days (skip Day 0 which is today)
-            daily = data.get("daily", {})
-            daily_forecast = []
-            d_times = daily.get("time", [])
-            d_tmax  = daily.get("temperature_2m_max", [])
-            d_tmin  = daily.get("temperature_2m_min", [])
-            d_codes = daily.get("weather_code", [])
-            d_probs = daily.get("precipitation_probability_max", [])
-            d_rains = daily.get("precipitation_sum", [])
-
-            for i in range(1, min(6, len(d_times))):
-                dt_str = d_times[i]
+        try:
+            weather_result, response_headers, not_modified = _fetch_from_met_no(disk_cache)
+            checked_at = time.time()
+            expires_at = checked_at
+            expires_header = response_headers.get("Expires")
+            if expires_header:
                 try:
-                    dt = datetime.datetime.strptime(dt_str, "%Y-%m-%d")
-                    day_name = dt.strftime("%a")
-                    day_date = dt.strftime("%b %d")
-                except Exception:
-                    day_name = f"+{i}d"
-                    day_date = dt_str
-                
-                c_text, c_icon = parse_wmo(d_codes[i] if i < len(d_codes) else 0, day=True)
-                daily_forecast.append({
-                    "date": dt_str,
-                    "day_name": day_name,
-                    "day_date": day_date,
-                    "temp_max": round(d_tmax[i], 1) if i < len(d_tmax) else 30.0,
-                    "temp_min": round(d_tmin[i], 1) if i < len(d_tmin) else 20.0,
-                    "condition": c_text,
-                    "icon": c_icon,
-                    "rain_prob": int(d_probs[i]) if i < len(d_probs) else 0,
-                    "rain_mm": round(float(d_rains[i]), 1) if i < len(d_rains) else 0.0
-                })
-
-            if not daily_forecast:
-                daily_forecast = generate_fallback_5day()
-
-            state["weather"] = {
-                "location": "Dharwad, Karnataka",
-                "condition": condition,
-                "icon": icon,
-                "is_day": is_day,
-                "temp": temp_c,
-                "humidity": humidity,
-                "wind_kmh": wind_kmh,
-                "rain_prob_next_4h": round(next_4h_prob, 1),
-                "rain_prob_24h": round(next_24h_prob, 1),
-                "rain_mm": round(rain_mm, 1),
-                "daily_forecast": daily_forecast,
-                "cached_at": now,
-                "live_fetch": True
-            }
-            print(f"[WEATHER] Live update: {temp_c}°C, {condition}, {humidity}% humidity")
-        else:
-            print(f"[WEATHER API] Non-200 status: {res.status_code} - {res.text[:200]}")
-            state["weather"]["error"] = f"HTTP {res.status_code}: {res.text[:200]}"
-            if not state["weather"].get("daily_forecast"):
-                state["weather"]["daily_forecast"] = generate_fallback_5day()
-            # On 429 rate limit, respect Retry-After (cache for that duration)
-            if res.status_code == 429:
-                retry_after = int(res.headers.get("Retry-After", 3600))
-                state["weather"]["cached_at"] = now + retry_after - 120  # Will expire 120s before reset
-                print(f"[WEATHER] Rate limited. Retry after {retry_after}s")
-            else:
-                state["weather"]["cached_at"] = now
-            state["weather"]["live_fetch"] = False
-    except Exception as e:
-        print(f"[WEATHER API ERROR] {e}")
-        state["weather"]["error"] = str(e)
-        if not state["weather"].get("daily_forecast"):
-            state["weather"]["daily_forecast"] = generate_fallback_5day()
-        state["weather"]["cached_at"] = now
-        state["weather"]["live_fetch"] = False
-
-    return state["weather"]
+                    expires_at = parsedate_to_datetime(expires_header).timestamp()
+                except (TypeError, ValueError, OverflowError):
+                    pass
+            refresh_after = max(expires_at, checked_at + WEATHER_MIN_REFRESH_SECONDS)
+            last_modified = response_headers.get("Last-Modified") or disk_cache.get("last_modified")
+            weather_result.update({
+                "cached_at": disk_cache.get("weather", {}).get("cached_at", checked_at) if not_modified else checked_at,
+                "checked_at": checked_at,
+                "refresh_after": refresh_after,
+                "live_fetch": True,
+                "stale": False
+            })
+            envelope = {"weather": weather_result, "refresh_after": refresh_after, "last_modified": last_modified}
+            directory = os.path.dirname(WEATHER_CACHE_FILE)
+            with tempfile.NamedTemporaryFile("w", dir=directory, delete=False, encoding="utf-8") as temp_file:
+                json.dump(envelope, temp_file)
+                temp_path = temp_file.name
+            os.replace(temp_path, WEATHER_CACHE_FILE)
+            state["weather"].update(weather_result)
+            print(f"[WEATHER] MET Norway refreshed: {weather_result['temp']}°C; next refresh after {datetime.datetime.fromtimestamp(refresh_after).isoformat(timespec='minutes')}")
+            return state["weather"]
+        except Exception as exc:
+            print(f"[WEATHER] MET Norway failed: {exc}")
+            if disk_cache.get("weather"):
+                stale_weather = disk_cache["weather"]
+                stale_weather.update({"stale": True, "error": str(exc), "refresh_after": time.time() + 3600})
+                state["weather"].update(stale_weather)
+                disk_cache["refresh_after"] = stale_weather["refresh_after"]
+                try:
+                    with open(WEATHER_CACHE_FILE, "w") as cache_file:
+                        json.dump(disk_cache, cache_file)
+                except OSError:
+                    pass
+                return state["weather"]
+            fallback = state["weather"]
+            retry_after = time.time() + 3600
+            fallback.update({"stale": True, "error": str(exc), "provider": "Offline fallback", "refresh_after": retry_after})
+            try:
+                with open(WEATHER_CACHE_FILE, "w") as cache_file:
+                    json.dump({"weather": fallback, "refresh_after": retry_after}, cache_file)
+            except OSError:
+                pass
+            return fallback
 
 # -------------------------------------------------------------
 # 3. Hardware / Serial Listener Thread
@@ -570,7 +640,7 @@ def serve_jpg(filename):
 @app.route("/api/version")
 def get_version():
     return jsonify({
-        "version": "v1.3-5day-weather-active",
+        "version": "v1.4-met-weather-cached",
         "timestamp": time.time(),
         "daily_count": len(state["weather"].get("daily_forecast", [])),
         "weather": state["weather"]
@@ -578,40 +648,15 @@ def get_version():
 
 @app.route("/api/weather_debug")
 def weather_debug():
-    """Diagnostic: test Open-Meteo API directly and return results."""
-    import traceback
-    result = {"timestamp": time.time()}
-    try:
-        url = (
-            "https://api.open-meteo.com/v1/forecast"
-            "?latitude=15.45&longitude=75.0"
-            "&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,is_day"
-            "&timezone=auto"
-        )
-        headers = {
-            "User-Agent": "VerdantFarm-SmartAgri/1.0 (academic-iot-research-project; Dharwad Field Station)"
-        }
-        res = requests.get(url, headers=headers, timeout=10)
-        result["status_code"] = res.status_code
-        result["response_headers"] = dict(res.headers)
-        if res.status_code == 200:
-            result["data"] = res.json().get("current", {})
-            result["ok"] = True
-        else:
-            result["body"] = res.text[:500]
-            result["ok"] = False
-    except Exception as e:
-        result["error"] = str(e)
-        result["traceback"] = traceback.format_exc()
-        result["ok"] = False
-    result["cached_weather"] = {
-        "temp": state["weather"].get("temp"),
-        "condition": state["weather"].get("condition"),
-        "live_fetch": state["weather"].get("live_fetch"),
-        "error": state["weather"].get("error"),
-        "cached_at": state["weather"].get("cached_at")
-    }
-    return jsonify(result)
+    """Show cached provider status without making a separate API request."""
+    weather = fetch_weather_data()
+    return jsonify({
+        "timestamp": time.time(),
+        "ok": bool(weather.get("live_fetch")),
+        "provider": weather.get("provider"),
+        "cached_weather": weather,
+        "next_refresh_at": weather.get("refresh_after")
+    })
 
 @app.route("/api/telemetry")
 def get_telemetry():
@@ -740,30 +785,36 @@ def set_scenario():
     if scenario == "normal":
         state["soil"] = {"moisture": 45.0, "temp": 26.0, "ec": 450, "ph": 6.8, "n": 52, "p": 42, "k": 55}
         state["crop"] = {"canopy_cover_pct": 62.0, "exg": 0.155, "yellowing_pct": 3.5, "dark_spot_pct": 1.5}
-        state["weather"]["rain_prob_next_4h"] = 10.0
+        state["weather"]["rain_mm_next_4h"] = 0.0
+        state["weather"]["rain_mm_next_24h"] = 0.0
     elif scenario == "drought":
         state["soil"] = {"moisture": 18.2, "temp": 34.5, "ec": 380, "ph": 6.9, "n": 48, "p": 39, "k": 50}
         state["crop"] = {"canopy_cover_pct": 42.0, "exg": 0.095, "yellowing_pct": 14.2, "dark_spot_pct": 3.0}
-        state["weather"]["rain_prob_next_4h"] = 5.0
+        state["weather"]["rain_mm_next_4h"] = 0.0
+        state["weather"]["rain_mm_next_24h"] = 0.0
     elif scenario == "rain_gated":
         state["soil"] = {"moisture": 19.0, "temp": 30.2, "ec": 410, "ph": 6.8, "n": 45, "p": 40, "k": 52}
         state["crop"] = {"canopy_cover_pct": 50.0, "exg": 0.110, "yellowing_pct": 9.0, "dark_spot_pct": 2.0}
-        state["weather"]["rain_prob_next_4h"] = 85.0
+        state["weather"]["rain_mm_next_4h"] = 12.5
+        state["weather"]["rain_mm_next_24h"] = 12.5
         state["weather"]["rain_mm"] = 12.5
         state["weather"]["condition"] = "Rain Showers"
         state["weather"]["icon"] = "fa-cloud-showers-heavy text-sky-600"
     elif scenario == "nutrient_deficiency":
         state["soil"] = {"moisture": 42.0, "temp": 25.5, "ec": 210, "ph": 6.5, "n": 18, "p": 12, "k": 22}
         state["crop"] = {"canopy_cover_pct": 35.0, "exg": 0.075, "yellowing_pct": 35.0, "dark_spot_pct": 4.0}
-        state["weather"]["rain_prob_next_4h"] = 15.0
+        state["weather"]["rain_mm_next_4h"] = 0.0
+        state["weather"]["rain_mm_next_24h"] = 0.0
     elif scenario == "foliar_stress":
         state["soil"] = {"moisture": 44.0, "temp": 28.0, "ec": 440, "ph": 6.7, "n": 50, "p": 40, "k": 53}
         state["crop"] = {"canopy_cover_pct": 64.4, "exg": 0.174, "yellowing_pct": 33.2, "dark_spot_pct": 19.2}
-        state["weather"]["rain_prob_next_4h"] = 10.0
+        state["weather"]["rain_mm_next_4h"] = 0.0
+        state["weather"]["rain_mm_next_24h"] = 0.0
     elif scenario == "aphids":
         state["soil"] = {"moisture": 45.0, "temp": 27.0, "ec": 460, "ph": 6.8, "n": 50, "p": 42, "k": 54}
         state["crop"] = {"canopy_cover_pct": 52.3, "exg": 0.181, "yellowing_pct": 8.0, "dark_spot_pct": 25.5}
-        state["weather"]["rain_prob_next_4h"] = 10.0
+        state["weather"]["rain_mm_next_4h"] = 0.0
+        state["weather"]["rain_mm_next_24h"] = 0.0
 
     state["hardware_connected"] = True
     state["last_serial_time"] = time.time()

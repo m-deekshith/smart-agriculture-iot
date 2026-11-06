@@ -479,7 +479,7 @@ def rank_crop_suitability(n, p, k, ph, moisture):
     rankings.sort(key=lambda x: (round(x["match_pct"], 1), x["priority"]), reverse=True)
     return rankings
 
-def get_fertilizer_and_timing_advisory(n, p, k, moisture, rain_prob_24h, yellowing_pct=0.0, dark_spot_pct=0.0):
+def get_fertilizer_and_timing_advisory(n, p, k, moisture, rain_mm_24h, yellowing_pct=0.0, dark_spot_pct=0.0):
     """
     Calculates exact fertilizer dosages, verifies weather-gated timing,
     and prescribes emergency foliar treatment if chlorosis/blight/pests are detected.
@@ -515,10 +515,10 @@ def get_fertilizer_and_timing_advisory(n, p, k, moisture, rain_prob_24h, yellowi
     if not fertilizers:
         timing_status = "OPTIMAL"
         timing_message = "✅ Soil nutrients are optimal. No chemical fertilizer required."
-    elif rain_prob_24h > 50.0 or moisture > 65.0:
+    elif rain_mm_24h >= 5.0 or moisture > 65.0:
         timing_status = "BLOCKED_LEACHING_RISK"
         timing_message = (
-            f"🛑 DEFER APPLICATION: Rain probability ({rain_prob_24h}%) or soil moisture ({moisture}%) is too high. "
+            f"🛑 DEFER APPLICATION: Forecast rainfall ({rain_mm_24h} mm/24h) or soil moisture ({moisture}%) is too high. "
             "Fertilizer will be washed into groundwater!"
         )
     elif moisture < 20.0:
@@ -591,7 +591,7 @@ def run_master_ai_analysis(soil_dict, crop_dict, weather_dict):
     crop_ranks  = rank_crop_suitability(soil_dict["n"], soil_dict["p"], soil_dict["k"], soil_dict["ph"], soil_dict["moisture"])
     fert_advice = get_fertilizer_and_timing_advisory(
         soil_dict["n"], soil_dict["p"], soil_dict["k"],
-        soil_dict["moisture"], weather_dict.get("rain_prob_24h", 10.0),
+        soil_dict["moisture"], weather_dict.get("rain_mm_next_24h", 0.0),
         yellowing_pct=yellow,
         dark_spot_pct=dark_spot
     )
@@ -600,9 +600,9 @@ def run_master_ai_analysis(soil_dict, crop_dict, weather_dict):
     irrigation_action = "PUMP_OFF"
     irrigation_reason = "Soil moisture is in optimal vegetative range."
     if health_diag["class_id"] == 1 or soil_dict["moisture"] < 22.0:
-        if weather_dict.get("rain_prob_next_4h", 0) > 60.0:
+        if weather_dict.get("rain_mm_next_4h", 0.0) >= 1.0:
             irrigation_action = "PUMP_DEFERRED"
-            irrigation_reason = f"Soil is dry, BUT rain expected ({weather_dict.get('rain_prob_next_4h')}%). Irrigation held to save water."
+            irrigation_reason = f"Soil is dry, BUT {weather_dict.get('rain_mm_next_4h')} mm rain is forecast in the next 4 hours. Irrigation held to save water."
         else:
             irrigation_action = "PUMP_ON"
             irrigation_reason = "Severe soil drought detected with no imminent rain. Drip irrigation active."
@@ -625,7 +625,7 @@ if __name__ == "__main__":
     # Test sample
     s = {"moisture": 19.5, "temp": 28.4, "ec": 410, "ph": 6.8, "n": 22, "p": 18, "k": 62}
     c = {"canopy_cover_pct": 52.0, "exg": 0.12, "yellowing_pct": 8.5}
-    w = {"rain_prob_next_4h": 75.0, "rain_prob_24h": 80.0}
+    w = {"rain_mm_next_4h": 5.0, "rain_mm_next_24h": 12.0}
 
     res = run_master_ai_analysis(s, c, w)
     print("\n" + "="*60)
