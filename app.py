@@ -218,10 +218,10 @@ def fetch_weather_data():
     Falls back gracefully if offline or rate-limited.
     """
     now = time.time()
-    # Cache for 10 minutes (600 seconds) only if we have a SUCCESSFUL live fetch
-    # (identified by "live_fetch" flag); failed/fallback data uses a shorter 60s retry
+    # Cache for 15 minutes (900 seconds) on successful live fetch;
+    # retry after 120s on failure (avoid burning Open-Meteo's 10k/day free limit)
     has_live = state["weather"].get("live_fetch", False)
-    cache_ttl = 600 if has_live else 60
+    cache_ttl = 900 if has_live else 120
     if state["weather"].get("cached_at", 0) > 0 and state["weather"].get("daily_forecast") and (now - state["weather"]["cached_at"] < cache_ttl):
         return state["weather"]
 
@@ -340,7 +340,13 @@ def fetch_weather_data():
             state["weather"]["error"] = f"HTTP {res.status_code}: {res.text[:200]}"
             if not state["weather"].get("daily_forecast"):
                 state["weather"]["daily_forecast"] = generate_fallback_5day()
-            state["weather"]["cached_at"] = now
+            # On 429 rate limit, respect Retry-After (cache for that duration)
+            if res.status_code == 429:
+                retry_after = int(res.headers.get("Retry-After", 3600))
+                state["weather"]["cached_at"] = now + retry_after - 120  # Will expire 120s before reset
+                print(f"[WEATHER] Rate limited. Retry after {retry_after}s")
+            else:
+                state["weather"]["cached_at"] = now
             state["weather"]["live_fetch"] = False
     except Exception as e:
         print(f"[WEATHER API ERROR] {e}")
