@@ -29,6 +29,7 @@ IMG_SUBMERSION = BASE_DIR / "hardware_test_submersion.png"
 IMG_DASHBOARD = BASE_DIR / "dashboard_live_view.png"
 IMG_PLANNER = BASE_DIR / "crop_planner_gap_analysis.png"
 IMG_THINGSPEAK = BASE_DIR / "thingspeak_cloud_mirror.png"
+IMG_IIIT_LOGO = BASE_DIR / "iiit_dharwad_logo.png"
 
 image_map = {
     "__IMG_MODALITY__": f"file://{IMG_MODALITY}",
@@ -39,6 +40,7 @@ image_map = {
     "__IMG_DASHBOARD__": f"file://{IMG_DASHBOARD}",
     "__IMG_PLANNER__": f"file://{IMG_PLANNER}",
     "__IMG_THINGSPEAK__": f"file://{IMG_THINGSPEAK}",
+    "__IIIT_LOGO__": f"file://{IMG_IIIT_LOGO}",
 }
 
 for key, uri in image_map.items():
